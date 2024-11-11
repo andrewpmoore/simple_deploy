@@ -71,3 +71,8 @@ See steps below of these:
 
 ### iOS configuration
 [iOS configuration](https://github.com/andrewpmoore/simple_deploy/blob/main/ios.md)
+
+
+### Contributions
+Thanks to the following people for their great contributions to this project
+[KarlJan Reginaldo](https://github.com/karlreginaldo)    

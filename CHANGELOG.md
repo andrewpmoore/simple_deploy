@@ -1,3 +1,6 @@
+## 0.19.0
+- Merged pull request to fix bug and add animated cursor, thanks KarlJan Reginaldo
+
 ## 0.18.0
 - Better validation if the deploy.yaml is missing parameters
 
