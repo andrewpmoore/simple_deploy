@@ -12,7 +12,7 @@ Install the dependency into your `pubspec.yaml` with the follow
 
 ```
 dev_dependencies:
-  simple_deploy: latest_version # e.g. ^0.8.0
+  simple_deploy: latest_version # e.g. ^0.20.0
 ```
 
 Create a `deploy.yaml` file at the root of your project and configure it
@@ -20,32 +20,44 @@ Create a `deploy.yaml` file at the root of your project and configure it
 Here is an example version of `deploy.yaml`
 ```
 common:
-  versionStrategy: "none"
+  versionStrategy: "none" 
 
 android:
-  credentialsFile: "c:/credentials/project-credentials.json"
-  packageName: "com.example.coolapp"
-  trackName: "internal"
-  whatsNew: "Simple bug fixes"
+  credentialsFile: "c:/credentials/project-credentials.json"   
+  packageName: "com.example.coolapp"                           
+  trackName: "internal"                                        
+  whatsNew: "Simple bug fixes"                                 
+  flavor: "flavor"             # optional, don't supply if you are not using flavors                           
 
 ios:
-  teamKeyId: "ABCD1A4A12"
-  developerId: "76a6aa66-e80a-67e9-e987-6a1c711a4b2
+  teamKeyId: "ABCD1A4A12"                                      
+  developerId: "76a6aa66-e80a-67e9-e987-6a1c711a4b2            
+  flavor: "flavor"             # optional, don't supply if you are not using flavors                                         
+
 ```
 
-| `versionStrategy` Value | Description                                                                                               |
-|-------------------------|-----------------------------------------------------------------------------------------------------------|
-| `none`                  | Uses the current value in the `pubspec`.                                                                  |
-| `pubspecIncrement`      | Retrieves the current build number from the `pubspec`, increments it by one, and uses the updated number. |
+
+####Parameter details
+| `flavor` | Description                                                                                               |
+|------------------------|-----------------------------------------------------------------------------------------------------------|
+| `flavorName`                 | Optional parameter, which can be set for both `android` and `iOS`, don't supply if not using flavors, or provide the flavor name if using them |                                                                  |
 
 
 
-| `trackName` Value | Description                                  |
-|-------------------|----------------------------------------------|
-| `internal`        | Deploys to the internal track.              |
-| `alpha`           | Deploys to the alpha track.                 |
-| `beta`            | Deploys to the beta track.                  |
-| `production`      | Deploys to the production track.            |
+
+| `versionStrategy` | Description                                                                                               |
+|------------------------|-----------------------------------------------------------------------------------------------------------|
+| `none`                 | Uses the current value in the `pubspec`.                                                                  |
+| `pubspecIncrement`     | Retrieves the current build number from the `pubspec`, increments it by one, and uses the updated number. |
+
+
+
+| `trackName` | Description                                  |
+|------------------|----------------------------------------------|
+| `internal`       | Deploys to the internal track.              |
+| `alpha`          | Deploys to the alpha track.                 |
+| `beta`           | Deploys to the beta track.                  |
+| `production`     | Deploys to the production track.            |
 
 Here's the step-by-step instructions for configuring for each platform
 

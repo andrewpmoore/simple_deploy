@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'common.dart';
 
 // Function to handle errors
@@ -8,46 +7,61 @@ void handleError(String message) {
   exit(1);
 }
 
-
-
-
-
-Future<void> deploy() async {
+Future<void> deploy({String? flavor}) async {
   final workingDirectory = Directory.current.path;
-  final config = await loadConfig(workingDirectory, 'ios');
 
-  // Run iOS deployment
+  // Load config based on the flavor (if provided)
+  final configFileName = flavor != null ? 'ios_$flavor' : 'ios';
+  final config = await loadConfig(workingDirectory, configFileName);
+
   final apiKey = config?['teamKeyId'];
-  if (apiKey==null){
+  if (apiKey == null) {
     print('No teamKeyId supplied');
     exit(1);
   }
   final apiIssuer = config?['developerId'];
-  if (apiIssuer==null){
+  if (apiIssuer == null) {
     print('No developerId supplied');
     exit(1);
   }
 
   DateTime startTime = DateTime.now();
 
+  // Run flutter clean
   bool success = await flutterClean(workingDirectory);
-  if (!success){
+  if (!success) {
     return;
   }
 
-  print('Build the iOS .ipa');
-  var result = await Process.run('flutter', ['build', 'ipa'], workingDirectory: workingDirectory, runInShell: true);
+  // Build the iOS .ipa with optional flavor
+  print('Building the iOS .ipa ${flavor != null ? "for $flavor flavor" : ""}');
+  var buildArgs = ['build', 'ipa'];
+  if (flavor != null) {
+    buildArgs.add('--flavor');
+    buildArgs.add(flavor);
+    print('iOS flavor $flavor');
+  }
+
+  var result = await Process.run('flutter', buildArgs, workingDirectory: workingDirectory, runInShell: true);
   if (result.exitCode != 0) {
     handleError('flutter build ipa failed: ${result.stderr}');
   }
   print('Built .ipa file');
 
-
+  // Upload the IPA to TestFlight
   print('Uploading the IPA to TestFlight');
-  // Replace with the actual command for uploading to TestFlight, e.g., using Fastlane or another tool
   result = await Process.run(
-      'xcrun', ['altool', '--upload-app', '--type', 'ios', '--file', '$workingDirectory/build/ios/ipa/app.ipa', '--apiKey', apiKey, '--apiIssuer', apiIssuer],
-      workingDirectory: workingDirectory, runInShell: true
+    'xcrun',
+    [
+      'altool',
+      '--upload-app',
+      '--type', 'ios',
+      '--file', '$workingDirectory/build/ios/ipa/app${flavor != null ? '-$flavor' : ''}.ipa',
+      '--apiKey', apiKey,
+      '--apiIssuer', apiIssuer
+    ],
+    workingDirectory: workingDirectory,
+    runInShell: true,
   );
   if (result.exitCode != 0) {
     handleError('Upload to TestFlight failed: ${result.stderr}');

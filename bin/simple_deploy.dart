@@ -18,26 +18,28 @@ void main(List<String> arguments) async {
     return;
   }
 
-  if (arguments.isEmpty) {
-    await promptAndDeploy();
+  String? flavor = _getFlavorFromArgs(arguments);
+
+  if (arguments.isEmpty || (arguments.length == 1 && flavor != null)) {
+    await promptAndDeploy(flavor);
   } else {
     String target = arguments[0].toLowerCase();
     if (target == 'ios') {
       if (Platform.isMacOS) {
-        await deployIos();
+        await deployIos(flavor);
       } else {
         print('Error: You can only deploy to iOS from MacOS.');
         return;
       }
     } else if (target == 'android') {
-      await deployAndroid();
+      await deployAndroid(flavor);
     } else {
       print('Invalid argument. Please pass "ios" or "android".');
     }
   }
 }
 
-Future<void> promptAndDeploy() async {
+Future<void> promptAndDeploy(String? flavor) async {
   if (Platform.isMacOS) {
     print('Choose deployment target:');
     print('1. Android');
@@ -51,11 +53,11 @@ Future<void> promptAndDeploy() async {
   String? choice = Platform.isMacOS ? stdin.readLineSync() : '1';
 
   if (choice == '1') {
-    await deployAndroid();
+    await deployAndroid(flavor);
   } else if (choice == '2') {
-    await deployIos();
+    await deployIos(flavor);
   } else if (choice == 'a') {
-    await deployAll();
+    await deployAll(flavor);
   } else if (choice == 'q') {
     print('Quitting deployment.');
   } else {
@@ -65,27 +67,27 @@ Future<void> promptAndDeploy() async {
   }
 }
 
-Future<void> deployIos() async {
+Future<void> deployIos(String? flavor) async {
   handleVersionStrategy();
 
   print('Deploying to iOS...');
-  await ios.deploy();
+  await ios.deploy(flavor: flavor);
 }
 
-Future<void> deployAndroid() async {
+Future<void> deployAndroid(String? flavor) async {
   handleVersionStrategy();
 
   print('Deploying to Android...');
-  await android.deploy();
+  await android.deploy(flavor: flavor);
 }
 
-Future<void> deployAll() async {
+Future<void> deployAll(String? flavor) async {
   handleVersionStrategy();
 
   print('Deploying to all platforms...');
-  await deployAndroid();
+  await deployAndroid(flavor);
   if (Platform.isMacOS) {
-    await deployIos();
+    await deployIos(flavor);
   } else {
     print('iOS deployment is only available on MacOS.');
   }
@@ -101,7 +103,6 @@ Future<void> handleVersionStrategy() async {
     //
   }
   print('versionStrategy: $versionStrategy');
-
 
   if (versionStrategy == 'pubspecIncrement') {
     await incrementBuildNumber();
@@ -131,4 +132,14 @@ Future<void> incrementBuildNumber() async {
   editor.update(['version'], newVersion);
   await pubspecFile.writeAsString(editor.toString());
   print('Updated build number to $newBuildNumber in pubspec.yaml');
+}
+
+// Helper function to parse the --flavor argument
+String? _getFlavorFromArgs(List<String> args) {
+  for (var arg in args) {
+    if (arg.startsWith('--flavor=')) {
+      return arg.split('=').last;
+    }
+  }
+  return null;
 }

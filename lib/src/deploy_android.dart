@@ -6,32 +6,48 @@ import 'package:simple_deploy/src/loading.dart';
 
 import 'common.dart';
 
-Future<void> deploy() async {
+Future<void> deploy({String? flavor}) async {
   final workingDirectory = Directory.current.path;
-  final config = await loadConfig(workingDirectory, 'android');
+
+  // Load config based on the flavor (if provided)
+  final configFileName = flavor != null ? 'android_$flavor' : 'android';
+  final config = await loadConfig(workingDirectory, configFileName);
+
   final credentialsFile0 = config?['credentialsFile'];
-  if (credentialsFile0==null){
+  if (credentialsFile0 == null) {
     print('No credentialsFile supplied');
     exit(1);
   }
   final packageName = config?['packageName'];
-  if (packageName==null){
+  if (packageName == null) {
     print('No packageName supplied');
     exit(1);
   }
-  final whatsNew = config?['whatsNew']??'No changes supplied';
+  final whatsNew = config?['whatsNew'] ?? 'No changes supplied';
   final trackNameRaw = config?['trackName'] ?? 'internal';
   final trackName = trackNameRaw.toString();
 
   DateTime startTime = DateTime.now();
+
+  // Run flutter clean
   bool success = await flutterClean(workingDirectory);
-  if (!success){
+  if (!success) {
     stopLoading();
     return;
   }
 
   startLoading('Build app bundle');
-  var result = await Process.run('flutter', ['build', 'appbundle'], workingDirectory: workingDirectory, runInShell: true);
+
+  // Build the app bundle with optional flavor
+  var buildArgs = ['build', 'appbundle'];
+  if (flavor != null) {
+    buildArgs.add('--flavor');
+    buildArgs.add(flavor);
+    print('Android flavor $flavor');
+  }
+
+  var result = await Process.run('flutter', buildArgs, workingDirectory: workingDirectory, runInShell: true);
+
   if (result.exitCode != 0) {
     print('flutter build appbundle failed: ${result.stderr}');
     stopLoading();
@@ -52,7 +68,7 @@ Future<void> deploy() async {
     print("Edit ID: $editId");
 
     startLoading('Upload app bundle');
-    final aabFile = File('$workingDirectory/build/app/outputs/bundle/release/app-release.aab');
+    final aabFile = File('$workingDirectory/build/app/outputs/bundle/${flavor ?? 'release'}/app-release.aab');
     final media = Media(aabFile.openRead(), aabFile.lengthSync());
     final uploadResponse = await androidPublisher.edits.bundles.upload(packageName, editId, uploadMedia: media);
     print("Bundle version code: ${uploadResponse.versionCode}");
@@ -93,5 +109,3 @@ extension StringExtension on String {
     return this[0].toUpperCase() + substring(1);
   }
 }
-
-

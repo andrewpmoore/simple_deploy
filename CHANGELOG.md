@@ -1,3 +1,6 @@
+## 0.20.0
+- Added support for flavors
+- 
 ## 0.19.0
 - Merged pull request to fix bug and add animated cursor, thanks KarlJan Reginaldo
 
