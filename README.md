@@ -17,7 +17,21 @@ dev_dependencies:
 
 Create a `deploy.yaml` file at the root of your project and configure it
 
-Here is an example version of `deploy.yaml`
+Here is minimal example version of `deploy.yaml`
+```
+android:
+  credentialsFile: "c:/credentials/project-credentials.json"   
+  packageName: "com.example.coolapp"                           
+  whatsNew: "Simple bug fixes"                                 
+
+ios:
+  teamKeyId: "ABCD1A4A12"                                      
+  developerId: "76a6aa66-e80a-67e9-e987-6a1c711a4b2            
+```
+
+And here's a version will all options set
+
+Here is minimal example version of `deploy.yaml`
 ```
 common:
   versionStrategy: "none" 
@@ -27,13 +41,14 @@ android:
   packageName: "com.example.coolapp"                           
   trackName: "internal"                                        
   whatsNew: "Simple bug fixes"                                 
-  flavor: "flavor"             # optional, don't supply if you are not using flavors                           
+  flavor: "flavor"             # optional, don't supply if you are not using flavors   
+  generatedFileName: "fancyproject.ipa"                        
 
 ios:
   teamKeyId: "ABCD1A4A12"                                      
   developerId: "76a6aa66-e80a-67e9-e987-6a1c711a4b2            
-  flavor: "flavor"             # optional, don't supply if you are not using flavors                                         
-
+  flavor: "flavor"             # optional, don't supply if you are not using flavors  
+  generatedFileName: "fancyproject.aab"                                                             
 ```
 
 
@@ -47,17 +62,17 @@ ios:
 
 | `versionStrategy` | Description                                                                                               |
 |------------------------|-----------------------------------------------------------------------------------------------------------|
-| `none`                 | Uses the current value in the `pubspec`.                                                                  |
+| `none`                 | Default. Uses the current value in the `pubspec`.                                                         |
 | `pubspecIncrement`     | Retrieves the current build number from the `pubspec`, increments it by one, and uses the updated number. |
 
 
 
-| `trackName` | Description                                  |
-|------------------|----------------------------------------------|
-| `internal`       | Deploys to the internal track.              |
-| `alpha`          | Deploys to the alpha track.                 |
-| `beta`           | Deploys to the beta track.                  |
-| `production`     | Deploys to the production track.            |
+| `trackName` | Description                             |
+|------------------|-----------------------------------------|
+| `internal`       | Default. Deploys to the internal track. |
+| `alpha`          | Deploys to the alpha track.             |
+| `beta`           | Deploys to the beta track.              |
+| `production`     | Deploys to the production track.        |
 
 Here's the step-by-step instructions for configuring for each platform
 
@@ -72,6 +87,9 @@ Just run `dart run simple_deploy` and select the deployment platform
 You can also supply the platform with 
  - `dart run simple_deploy android`
  - `dart run simple_deploy ios`
+
+If you are using flavors you can add them here, they will override what is set in the pubspec.yaml, for example
+ - `dart run simple_deploy android --flavor flavorName`
 
 ## Additional information
 You'll need to get some developer details from App Store connect for the deploy.yaml file

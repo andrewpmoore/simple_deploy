@@ -26,6 +26,7 @@ Future<void> deploy({String? flavor}) async {
   final whatsNew = config?['whatsNew'] ?? 'No changes supplied';
   final trackNameRaw = config?['trackName'] ?? 'internal';
   final trackName = trackNameRaw.toString();
+  final generatedFileName = config?['generatedFileName']?? 'app-release.aab';
 
   DateTime startTime = DateTime.now();
 
@@ -68,7 +69,7 @@ Future<void> deploy({String? flavor}) async {
     print("Edit ID: $editId");
 
     startLoading('Upload app bundle');
-    final aabFile = File('$workingDirectory/build/app/outputs/bundle/${flavor ?? 'release'}/app-release.aab');
+    final aabFile = File('$workingDirectory/build/app/outputs/bundle/${flavor ?? 'release'}/$generatedFileName');
     final media = Media(aabFile.openRead(), aabFile.lengthSync());
     final uploadResponse = await androidPublisher.edits.bundles.upload(packageName, editId, uploadMedia: media);
     print("Bundle version code: ${uploadResponse.versionCode}");

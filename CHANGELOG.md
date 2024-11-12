@@ -1,3 +1,6 @@
+## 0.21.0
+- Added support for custom build names
+
 ## 0.20.0
 - Added support for flavors
 - 

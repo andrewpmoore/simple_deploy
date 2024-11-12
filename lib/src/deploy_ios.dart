@@ -25,6 +25,9 @@ Future<void> deploy({String? flavor}) async {
     exit(1);
   }
 
+  final generatedFileName = (config?['generatedFileName']?? 'app.ipa').toString().replaceFirst('.ipa', '');
+
+
   DateTime startTime = DateTime.now();
 
   // Run flutter clean
@@ -56,7 +59,7 @@ Future<void> deploy({String? flavor}) async {
       'altool',
       '--upload-app',
       '--type', 'ios',
-      '--file', '$workingDirectory/build/ios/ipa/app${flavor != null ? '-$flavor' : ''}.ipa',
+      '--file', '$workingDirectory/build/ios/ipa/$generatedFileName${flavor != null ? '-$flavor' : ''}.ipa',
       '--apiKey', apiKey,
       '--apiIssuer', apiIssuer
     ],
