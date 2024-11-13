@@ -1,9 +1,12 @@
+## 0.22.0
+- Document improvements
+
 ## 0.21.0
 - Added support for custom build names
 
 ## 0.20.0
 - Added support for flavors
-- 
+
 ## 0.19.0
 - Merged pull request to fix bug and add animated cursor, thanks KarlJan Reginaldo
 

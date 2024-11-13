@@ -41,18 +41,18 @@ android:
   packageName: "com.example.coolapp"                           
   trackName: "internal"                                        
   whatsNew: "Simple bug fixes"                                 
-  flavor: "flavor"             # optional, don't supply if you are not using flavors   
-  generatedFileName: "fancyproject.ipa"                        
+  flavor: "flavor"            # specify a flavor if required, or omit if not using flavors
+  generatedFileName: "fancyproject.aab"       # supply a custom file name for the aab, or omit if using the default                 
 
 ios:
   teamKeyId: "ABCD1A4A12"                                      
-  developerId: "76a6aa66-e80a-67e9-e987-6a1c711a4b2            
-  flavor: "flavor"             # optional, don't supply if you are not using flavors  
-  generatedFileName: "fancyproject.aab"                                                             
+  developerId: "76a6aa66-e80a-67e9-e987-6a1c711a4b2"            
+  flavor: "flavor"            # specify a flavor if required, or omit if not using flavors
+  generatedFileName: "fancyproject.ipa"         # supply a custom file name for the ipa, or omit if using the default                                                     
 ```
 
 
-####Parameter details
+#### Parameter details
 | `flavor` | Description                                                                                               |
 |------------------------|-----------------------------------------------------------------------------------------------------------|
 | `flavorName`                 | Optional parameter, which can be set for both `android` and `iOS`, don't supply if not using flavors, or provide the flavor name if using them |                                                                  |
