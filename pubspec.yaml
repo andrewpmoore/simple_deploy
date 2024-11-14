@@ -6,8 +6,8 @@
 
 
 name: simple_deploy
-description: A quick and easy way to push deployment to Test Flight and the play store internal test track
-version: 0.22.0
+description: Effortlessly deploy to TestFlight and Play Store test tracks with a single Dart command!
+version: 0.23.0
 homepage: https://github.com/andrewpmoore/simple_deploy
 
 
@@ -25,3 +25,8 @@ dependencies:
 dev_dependencies:
   lints: ^4.0.0
   test: ^1.24.0
+
+
+screenshots:
+  - description: 'Simple deploy image'
+    path: title.png

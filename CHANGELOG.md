@@ -1,3 +1,6 @@
+## 0.23.0
+- Document improvements
+
 ## 0.22.0
 - Document improvements
 

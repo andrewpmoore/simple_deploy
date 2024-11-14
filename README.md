@@ -12,7 +12,7 @@ Install the dependency into your `pubspec.yaml` with the follow
 
 ```
 dev_dependencies:
-  simple_deploy: latest_version # e.g. ^0.20.0
+  simple_deploy: latest_version # e.g. ^0.23.0
 ```
 
 Create a `deploy.yaml` file at the root of your project and configure it
