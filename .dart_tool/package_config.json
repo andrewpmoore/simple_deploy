@@ -344,10 +344,10 @@
       "languageVersion": "3.5"
     }
   ],
-  "generated": "2024-11-14T15:30:04.784713Z",
+  "generated": "2024-11-14T15:31:01.349373Z",
   "generator": "pub",
   "generatorVersion": "3.5.4",
-  "flutterRoot": "file:///C:/flutter",
+  "flutterRoot": "file:///c:/flutter",
   "flutterVersion": "3.24.4",
   "pubCache": "file:///C:/Users/Andrew/AppData/Local/Pub/Cache"
 }

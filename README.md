@@ -5,10 +5,11 @@ NOTE: This is very much a work-in-progress package at the moment, until it reach
 ## Features
 
 Deploy to iOS Test Flight
-Deploy to Android Play Store Test Track
+Deploy to Android Play Store tracks of your choice
+Supports flavors
 
 ## Getting started
-Install the dependency into your `pubspec.yaml` with the follow
+Install the dependency into your `pubspec.yaml` with the following:
 
 ```
 dev_dependencies:
@@ -29,9 +30,8 @@ ios:
   developerId: "76a6aa66-e80a-67e9-e987-6a1c711a4b2            
 ```
 
-And here's a version will all options set
+And here's a version with all options set:
 
-Here is minimal example version of `deploy.yaml`
 ```
 common:
   versionStrategy: "none" 
@@ -92,7 +92,7 @@ If you are using flavors you can add them here, they will override what is set i
  - `dart run simple_deploy android --flavor flavorName`
 
 ## Additional information
-You'll need to get some developer details from App Store connect for the deploy.yaml file
+You'll need to get some developer details from App Store connect for the `deploy.yaml` file
 You will also need to set up a google cloud project to create the `.json` file required for android.
 See steps below of these:
 
