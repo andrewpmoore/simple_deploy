@@ -1,3 +1,7 @@
+## 0.25.0
+- Decreased the minimum dart version
+
+
 ## 0.24.0
 - Document improvements
 

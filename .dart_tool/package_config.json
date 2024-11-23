@@ -57,7 +57,7 @@
     },
     {
       "name": "coverage",
-      "rootUri": "file:///C:/Users/Andrew/AppData/Local/Pub/Cache/hosted/pub.dev/coverage-1.10.0",
+      "rootUri": "file:///C:/Users/Andrew/AppData/Local/Pub/Cache/hosted/pub.dev/coverage-1.11.0",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
@@ -87,9 +87,9 @@
     },
     {
       "name": "google_identity_services_web",
-      "rootUri": "file:///C:/Users/Andrew/AppData/Local/Pub/Cache/hosted/pub.dev/google_identity_services_web-0.3.1+4",
+      "rootUri": "file:///C:/Users/Andrew/AppData/Local/Pub/Cache/hosted/pub.dev/google_identity_services_web-0.3.3",
       "packageUri": "lib/",
-      "languageVersion": "3.3"
+      "languageVersion": "3.4"
     },
     {
       "name": "googleapis",
@@ -219,9 +219,9 @@
     },
     {
       "name": "shelf_web_socket",
-      "rootUri": "file:///C:/Users/Andrew/AppData/Local/Pub/Cache/hosted/pub.dev/shelf_web_socket-2.0.0",
+      "rootUri": "file:///C:/Users/Andrew/AppData/Local/Pub/Cache/hosted/pub.dev/shelf_web_socket-2.0.1",
       "packageUri": "lib/",
-      "languageVersion": "3.0"
+      "languageVersion": "3.3"
     },
     {
       "name": "source_map_stack_trace",
@@ -341,13 +341,13 @@
       "name": "simple_deploy",
       "rootUri": "../",
       "packageUri": "lib/",
-      "languageVersion": "3.5"
+      "languageVersion": "3.0"
     }
   ],
-  "generated": "2024-11-14T15:31:01.349373Z",
+  "generated": "2024-11-23T15:56:25.394479Z",
   "generator": "pub",
   "generatorVersion": "3.5.4",
-  "flutterRoot": "file:///c:/flutter",
+  "flutterRoot": "file:///C:/flutter",
   "flutterVersion": "3.24.4",
   "pubCache": "file:///C:/Users/Andrew/AppData/Local/Pub/Cache"
 }
