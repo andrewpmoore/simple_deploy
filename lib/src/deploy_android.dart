@@ -27,6 +27,7 @@ Future<void> deploy({String? flavor}) async {
   final trackNameRaw = config?['trackName'] ?? 'internal';
   final trackName = trackNameRaw.toString();
   final generatedFileName = config?['generatedFileName']?? 'app-release.aab';
+  final trackStatus = config?['trackStatus']?? 'completed';
 
   DateTime startTime = DateTime.now();
 
@@ -80,7 +81,7 @@ Future<void> deploy({String? flavor}) async {
       releases: [
         TrackRelease(
           name: '${trackName.capitalize()} Release',
-          status: 'completed',
+          status: trackStatus,
           versionCodes: [uploadResponse.versionCode!.toString()],
           releaseNotes: [
             LocalizedText(
