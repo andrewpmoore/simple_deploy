@@ -19,27 +19,32 @@ void main(List<String> arguments) async {
   }
 
   String? flavor = _getFlavorFromArgs(arguments);
+  bool shouldIncrementVersion = arguments.contains('--pubspecIncrement');
+  bool shouldSubmitReview = arguments.contains('--submit-review');
 
-  if (arguments.isEmpty || (arguments.length == 1 && flavor != null)) {
-    await promptAndDeploy(flavor);
+  if (arguments.isEmpty ||
+      (arguments.length == 1 &&
+          (flavor != null || shouldIncrementVersion || shouldSubmitReview))) {
+    await promptAndDeploy(flavor, shouldIncrementVersion, shouldSubmitReview);
   } else {
     String target = arguments[0].toLowerCase();
     if (target == 'ios') {
       if (Platform.isMacOS) {
-        await deployIos(flavor);
+        await deployIos(flavor, shouldIncrementVersion, shouldSubmitReview);
       } else {
         print('Error: You can only deploy to iOS from MacOS.');
         return;
       }
     } else if (target == 'android') {
-      await deployAndroid(flavor);
+      await deployAndroid(flavor, shouldIncrementVersion);
     } else {
       print('Invalid argument. Please pass "ios" or "android".');
     }
   }
 }
 
-Future<void> promptAndDeploy(String? flavor) async {
+Future<void> promptAndDeploy(String? flavor, bool shouldIncrementVersion,
+    bool shouldSubmitReview) async {
   if (Platform.isMacOS) {
     print('Choose deployment target:');
     print('1. Android');
@@ -53,11 +58,11 @@ Future<void> promptAndDeploy(String? flavor) async {
   String? choice = Platform.isMacOS ? stdin.readLineSync() : '1';
 
   if (choice == '1') {
-    await deployAndroid(flavor);
+    await deployAndroid(flavor, shouldIncrementVersion);
   } else if (choice == '2') {
-    await deployIos(flavor);
+    await deployIos(flavor, shouldIncrementVersion, shouldSubmitReview);
   } else if (choice == 'a') {
-    await deployAll(flavor);
+    await deployAll(flavor, shouldIncrementVersion, shouldSubmitReview);
   } else if (choice == 'q') {
     print('Quitting deployment.');
   } else {
@@ -67,33 +72,50 @@ Future<void> promptAndDeploy(String? flavor) async {
   }
 }
 
-Future<void> deployIos(String? flavor) async {
-  handleVersionStrategy();
-
+Future<void> deployIos(String? flavor,
+    [bool shouldIncrementVersion = false,
+    bool shouldSubmitReview = false]) async {
+  final versionStrategy = await handleVersionStrategy(shouldIncrementVersion);
   print('Deploying to iOS...');
-  await ios.deploy(flavor: flavor);
+  await ios.deploy(
+      flavor: flavor,
+      submitToReview: shouldSubmitReview,
+      useStoreIncrement: versionStrategy == 'storeIncrement');
 }
 
-Future<void> deployAndroid(String? flavor) async {
-  handleVersionStrategy();
-
+Future<void> deployAndroid(String? flavor,
+    [bool shouldIncrementVersion = false]) async {
+  final versionStrategy = await handleVersionStrategy(shouldIncrementVersion);
   print('Deploying to Android...');
-  await android.deploy(flavor: flavor);
+  await android.deploy(
+      flavor: flavor, useStoreIncrement: versionStrategy == 'storeIncrement');
 }
 
-Future<void> deployAll(String? flavor) async {
-  handleVersionStrategy();
-
+Future<void> deployAll(String? flavor,
+    [bool shouldIncrementVersion = false,
+    bool shouldSubmitReview = false]) async {
+  await handleVersionStrategy(shouldIncrementVersion);
   print('Deploying to all platforms...');
-  await deployAndroid(flavor);
+
+  // Clean once before deploying to all platforms
+  final workingDirectory = Directory.current.path;
+  bool success = await flutterClean(workingDirectory);
+  if (!success) {
+    print('Failed to clean project');
+    return;
+  }
+
+  await android.deploy(flavor: flavor, skipClean: true);
   if (Platform.isMacOS) {
-    await deployIos(flavor);
+    await ios.deploy(
+        flavor: flavor, skipClean: true, submitToReview: shouldSubmitReview);
   } else {
     print('iOS deployment is only available on MacOS.');
   }
 }
 
-Future<void> handleVersionStrategy() async {
+Future<String> handleVersionStrategy(
+    [bool shouldIncrementVersion = false]) async {
   final workingDirectory = Directory.current.path;
   String versionStrategy = 'none';
   try {
@@ -102,16 +124,29 @@ Future<void> handleVersionStrategy() async {
   } catch (e) {
     //
   }
+
+  // Override version strategy if --pubspecIncrement flag is provided
+  if (shouldIncrementVersion) {
+    versionStrategy = 'pubspecIncrement';
+  }
+
   print('versionStrategy: $versionStrategy');
 
   if (versionStrategy == 'pubspecIncrement') {
     await incrementBuildNumber();
+  } else if (versionStrategy == 'storeIncrement') {
+    // This will be handled by the deploy function
+    print(
+        'Using store increment strategy - will get latest version from store');
   } else if (versionStrategy == 'none') {
     // Do nothing
   } else {
-    print('Invalid versionStrategy. Valid values are `none` and `pubspecIncrement`.');
+    print(
+        'Invalid versionStrategy. Valid values are `none`, `pubspecIncrement`, and `storeIncrement`.');
     exit(1);
   }
+
+  return versionStrategy;
 }
 
 Future<void> incrementBuildNumber() async {
@@ -124,7 +159,8 @@ Future<void> incrementBuildNumber() async {
   final currentVersion = doc['version'] as String;
   final versionParts = currentVersion.split('+');
   final versionNumber = versionParts[0];
-  final currentBuildNumber = int.parse(versionParts.length > 1 ? versionParts[1] : '0');
+  final currentBuildNumber =
+      int.parse(versionParts.length > 1 ? versionParts[1] : '0');
 
   final newBuildNumber = currentBuildNumber + 1;
   final newVersion = '$versionNumber+$newBuildNumber';

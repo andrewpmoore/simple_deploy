@@ -1,4 +1,5 @@
 ## Steps for configuring Android deployment
+
 To deploy to the Play Store, follow the steps below.
 
 A Google Service Account is required to upload your binary to Google Play Store. This JSON key must be added to your account to publish apps to Google Play.
@@ -60,15 +61,16 @@ Make sure this account has access to <b>Releases</b>, <b>Store presence</b>, and
 <img src="https://raw.githubusercontent.com/andrewpmoore/simple_deploy/main/images/google-service11.png" width="100%"/>
 
 Then click <b>Invite User</b>. Your account key is ready. 🎉
+
 </li>
 
-<li>Your account is now ready. Save the <code>.json</code> file created into a secure location on your build machine. Don’t check it into a public version control system.</li>
+<li>Your account is now ready. Save the <code>.json</code> file created into a secure location on your build machine. Don't check it into a public version control system.</li>
 
 <li>Configure your <code>deploy.yaml</code> file's <code>credentialsFile</code> property to point at the downloaded file's path from the step above.</li>
 
 <li>Set your <code>packageName</code> to match the package name declared in your <code>\android\app\build.gradle</code></li>
 
-<li>Specify what’s new in this build.</li>
+<li>Specify what's new in this build in the <code>whatsNew</code> field of your <code>deploy.yaml</code>.</li>
 
 </ol>
 

@@ -4,29 +4,30 @@
 # Run:
 #  `dart pub publish`
 
-
 name: simple_deploy
 description: Effortlessly deploy to TestFlight and Play Store test tracks with a single Dart command!
-version: 0.25.0
+version: 1.0.0
 homepage: https://github.com/andrewpmoore/simple_deploy
-
 
 environment:
   sdk: ^3.0.0
 
 dependencies:
-  # path: ^1.8.0
+  flutter:
+    sdk: flutter
+  yaml: ^3.1.0 #load the yaml file
+  path: ^1.8.0
   googleapis_auth: ^1.6.0  #handle the auth
   googleapis: ^13.2.0  #play store api access
-  http: ^1.2.2  #connection to play store api
-  yaml: ^3.1.0  #load the yaml file
   yaml_edit: ^2.2.1
+  appstore_connect: ^0.2.1 #app store connect api access
+  http: ^1.2.2 #connection to play store api
+  dart_jsonwebtoken: ^2.17.0 #jwt token generation
 
 dev_dependencies:
   lints: ^4.0.0
   test: ^1.24.0
 
-
 screenshots:
-  - description: 'Simple deploy image'
+  - description: "Simple deploy image"
     path: title.png
