@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "simple_deploy",
-      "version": "1.0.0-dev.1",
+      "version": "1.0.0-dev.2",
       "dependencies": [
         "appstore_connect",
         "dart_jsonwebtoken",
@@ -83,7 +83,7 @@
     },
     {
       "name": "appstore_connect",
-      "version": "0.2.1",
+      "version": "0.3.1",
       "dependencies": [
         "dart_jsonwebtoken",
         "http",

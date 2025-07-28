@@ -10,10 +10,11 @@ import 'common.dart';
 
 /// Gets the latest version code from the Play Store for the given package and track
 Future<int> getLatestVersionCode(AndroidPublisherApi androidPublisher,
-    String packageName, String trackName) async {
+    String packageName, String editId, String trackName) async { // Added editId parameter
   try {
+    // Use the valid editId instead of 'temp'
     final track =
-        await androidPublisher.edits.tracks.get(packageName, 'temp', trackName);
+    await androidPublisher.edits.tracks.get(packageName, editId, trackName);
     if (track.releases == null || track.releases!.isEmpty) {
       return 0; // No releases yet
     }
@@ -21,8 +22,9 @@ Future<int> getLatestVersionCode(AndroidPublisherApi androidPublisher,
     // Find the highest version code across all releases
     int highestVersionCode = 0;
     for (var release in track.releases!) {
-      if (release.versionCodes == null || release.versionCodes!.isEmpty)
+      if (release.versionCodes == null || release.versionCodes!.isEmpty) {
         continue;
+      }
       for (var versionCode in release.versionCodes!) {
         final code = int.tryParse(versionCode) ?? 0;
         if (code > highestVersionCode) {
@@ -32,15 +34,21 @@ Future<int> getLatestVersionCode(AndroidPublisherApi androidPublisher,
     }
     return highestVersionCode;
   } catch (e) {
+    // Check if the error is because the track doesn't exist yet, which is not a critical failure
+    if (e.toString().contains('track_not_found')) {
+      print('Warning: Track "$trackName" not found. Assuming version code 0.');
+      return 0;
+    }
     print('Warning: Failed to get latest version code from Play Store: $e');
     return 0;
   }
 }
 
+
 Future<void> deploy(
     {String? flavor,
-    bool skipClean = false,
-    bool useStoreIncrement = false}) async {
+      bool skipClean = false,
+      bool useStoreIncrement = false}) async {
   final workingDirectory = Directory.current.path;
 
   // Load config based on the flavor (if provided)
@@ -64,56 +72,28 @@ Future<void> deploy(
 
   DateTime startTime = DateTime.now();
 
-  // Run flutter clean if not skipped
-  if (!skipClean) {
-    bool success = await flutterClean(workingDirectory);
-    if (!success) {
-      stopLoading();
-      return;
-    }
-  }
-
-  startLoading('Build app bundle');
-
-  // Build the app bundle with optional flavor
-  var buildArgs = ['build', 'appbundle'];
-  if (flavor != null) {
-    buildArgs.add('--flavor');
-    buildArgs.add(flavor);
-    print('Android flavor $flavor');
-  }
-
-  var result = await Process.run('flutter', buildArgs,
-      workingDirectory: workingDirectory, runInShell: true);
-
-  if (result.exitCode != 0) {
-    print('flutter build appbundle failed: ${result.stderr}');
-    stopLoading();
-    return;
-  }
-  print('App bundle built successfully');
-
   startLoading('Get service account');
   File credentialsFile = File(credentialsFile0);
   final credentials = ServiceAccountCredentials.fromJson(
       json.decode(credentialsFile.readAsStringSync()));
   final httpClient = await clientViaServiceAccount(
       credentials, [AndroidPublisherApi.androidpublisherScope]);
+  final androidPublisher = AndroidPublisherApi(httpClient);
 
   try {
     startLoading('Get Edit ID');
-    final androidPublisher = AndroidPublisherApi(httpClient);
     final insertEdit =
-        await androidPublisher.edits.insert(AppEdit(), packageName);
+    await androidPublisher.edits.insert(AppEdit(), packageName);
     final editId = insertEdit.id!;
     print("Edit ID: $editId");
 
     // If using store increment, get the latest version code and increment it
-    int nextVersionCode = 1;
     if (useStoreIncrement) {
+      startLoading('Getting latest version from Play Store...');
       final latestVersionCode =
-          await getLatestVersionCode(androidPublisher, packageName, trackName);
-      nextVersionCode = latestVersionCode + 1;
+      await getLatestVersionCode(androidPublisher, packageName, editId, trackName);
+      final nextVersionCode = latestVersionCode + 1;
+      print('Latest store version: $latestVersionCode. New version will be: $nextVersionCode');
 
       // Update the pubspec.yaml with the new version code
       final pubspecFile = File('pubspec.yaml');
@@ -127,8 +107,35 @@ Future<void> deploy(
       editor.update(['version'], newVersion);
       await pubspecFile.writeAsString(editor.toString());
       print(
-          'Updated build number to $nextVersionCode in pubspec.yaml based on Play Store version');
+          'Updated build number to $nextVersionCode in pubspec.yaml');
     }
+
+    // Run flutter clean if not skipped
+    if (!skipClean) {
+      bool success = await flutterClean(workingDirectory);
+      if (!success) {
+        stopLoading();
+        return;
+      }
+    }
+
+    startLoading('Build app bundle');
+    var buildArgs = ['build', 'appbundle'];
+    if (flavor != null) {
+      buildArgs.add('--flavor');
+      buildArgs.add(flavor);
+      print('Android flavor $flavor');
+    }
+    var result = await Process.run('flutter', buildArgs,
+        workingDirectory: workingDirectory, runInShell: true);
+
+    if (result.exitCode != 0) {
+      print('flutter build appbundle failed: ${result.stderr}');
+      stopLoading();
+      return;
+    }
+    print('App bundle built successfully');
+
 
     startLoading('Upload app bundle');
     final aabFile = File(
@@ -169,6 +176,7 @@ Future<void> deploy(
     stopLoading();
   }
 }
+
 
 extension StringExtension on String {
   String capitalize() {

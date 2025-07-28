@@ -1,4 +1,4 @@
-## 1.0.0-dev.1
+## 1.0.0-dev.2
 - Added `versionStrategy: "storeIncrement"` which will get the current store build number and increment it by 1
 - Added support for submitting iOS apps directly to App Store review
 - Added `bundleId` requirement for iOS configuration
