@@ -99,14 +99,14 @@ Future<void> deploy(
   final configFileName = flavor != null ? 'ios_$flavor' : 'ios';
   final config = await loadConfig(workingDirectory, configFileName);
 
-  final apiKey = config?['teamKeyId'];
+  final apiKey = config?['keyId'];
   if (apiKey == null) {
-    print('No teamKeyId supplied');
+    print('No keyId supplied');
     exit(1);
   }
-  final apiIssuer = config?['developerId'];
+  final apiIssuer = config?['issuerId'];
   if (apiIssuer == null) {
-    print('No developerId supplied');
+    print('No issuerId supplied');
     exit(1);
   }
 

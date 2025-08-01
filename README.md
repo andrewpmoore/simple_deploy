@@ -35,7 +35,7 @@ ios:
   flavor: "flavor"            # specify a flavor if required, or omit if not using flavors
   generatedFileName: "fancyproject.ipa"         # supply a custom file name for the ipa, or omit if using the default
   # App Store Connect API configuration (required for storeIncrement version strategy)
-  issuerId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  # App Store Connect API Issuer ID
+  issuerId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  # App Store Connect, Users and Access, Integrations, App Store Connect API, issuerId 
   keyId: "XXXXXXXXXX"  # App Store Connect API Key ID
   privateKeyPath: "path/to/AuthKey_XXXXXXXXXX.p8"  # Path to your private key file
 ```
