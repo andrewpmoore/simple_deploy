@@ -6,7 +6,7 @@
 
 name: simple_deploy
 description: Effortlessly deploy to TestFlight and Play Store test tracks with a single Dart command!
-version: 1.0.0-dev.10
+version: 1.0.0-dev.11
 homepage: https://github.com/andrewpmoore/simple_deploy
 
 environment:

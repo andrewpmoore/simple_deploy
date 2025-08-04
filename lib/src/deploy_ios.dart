@@ -58,33 +58,35 @@ Future<void> deploy(
   final editor = YamlEditor(pubspecContent);
   final currentVersionString = (loadYaml(pubspecContent) as YamlMap)['version'] as String;
 
-  // The app version is the part before the '+', e.g., '1.0.0' from '1.0.0+1'.
-  String appVersion = currentVersionString.split('+').first;
-  int buildNumber = int.parse(currentVersionString.split('+').last);
+  // The version format is now handled correctly (e.g., '1.0.15.37')
+  final parts = currentVersionString.split('.');
+  String marketingVersion = parts.sublist(0, parts.length - 1).join('.');
+  int buildNumber = int.parse(parts.last);
 
   if (useStoreIncrement) {
     print('Checking TestFlight for latest build details...');
-    final latestMarketingVersion = await appStoreApi.getLatestMarketingVersion();
+    final latestAppVersion = await appStoreApi.getLatestAppVersion();
 
-    // Check if the local marketing version is lower than the one in the store.
-    if (latestMarketingVersion != null && isVersionHigher(latestMarketingVersion, appVersion)) {
-      // If it is, we need to update it. We will use the last approved version and increment it.
-      final latestVersionParts = latestMarketingVersion.split('.').map(int.parse).toList();
-      latestVersionParts.last++; // Increment the patch number
-      appVersion = latestVersionParts.join('.');
-      buildNumber = 0; // Reset build number for a new marketing version train
-      print('Updated app version to match store: $appVersion');
+    if (latestAppVersion != null) {
+      final latestParts = latestAppVersion.split('.');
+      final latestMarketingVersion = latestParts.sublist(0, latestParts.length - 1).join('.');
+      final latestBuildNumber = int.parse(latestParts.last);
+
+      if (isVersionHigher(latestMarketingVersion, marketingVersion)) {
+        // If the store's marketing version is higher, we must use it.
+        marketingVersion = latestMarketingVersion;
+        buildNumber = latestBuildNumber + 1;
+        print('Updated marketing version to match store: $marketingVersion');
+      } else {
+        // Otherwise, we simply increment the local build number.
+        buildNumber = latestBuildNumber + 1;
+      }
     }
 
-    // Now get the latest build number for the current marketing version and increment it.
-    // The App Store Connect API 'builds' resource doesn't have a separate `buildNumber` field.
-    // We can assume the build number is the last number in the version string.
-    final latestBuildNumber = await appStoreApi.getLatestBuildNumber(appVersion);
-    buildNumber = latestBuildNumber + 1;
-    print('Updated pubspec.yaml build number to $buildNumber.');
+    print('Updated build number to $buildNumber.');
 
     // Update pubspec.yaml with the new version string
-    final newVersionString = '$appVersion+$buildNumber';
+    final newVersionString = '$marketingVersion.$buildNumber';
     editor.update(['version'], newVersionString);
     await pubspecFile.writeAsString(editor.toString());
   }
@@ -101,8 +103,8 @@ Future<void> deploy(
     'build', 'ipa',
     if (flavor != null) ...['--flavor', flavor],
     // Use the build-name and build-number flags to ensure Info.plist is correctly updated.
-    '--build-name=$appVersion',
-    '--build-number=$buildNumber',
+    '--build-name=$marketingVersion',
+    '--build-number=$buildNumber.0', // Build number for iOS should be an integer, but Flutter's flag takes a string
   ],
       workingDirectory: workingDirectory, runInShell: true);
 
@@ -118,7 +120,7 @@ Future<void> deploy(
 
   bool success = await appStoreApi.uploadAndSubmit(
     ipaPath: ipaPath,
-    appVersion: appVersion,
+    appVersion: marketingVersion, // Pass the marketing version here
     whatsNew: whatsNew,
     submitForReview: submitToReview,
   );

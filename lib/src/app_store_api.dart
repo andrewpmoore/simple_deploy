@@ -1,5 +1,3 @@
-// app_store_api.dart
-
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -51,14 +49,12 @@ class AppStoreApiClient {
     return data['data'][0]['id'];
   }
 
-  /// Retrieves the latest marketing version string from TestFlight.
-  Future<String?> getLatestMarketingVersion() async {
+  /// Retrieves the latest app version string (e.g., '1.0.16.38') from TestFlight.
+  Future<String?> getLatestAppVersion() async {
     final appId = await _getAppId();
     if (appId == null) {
-      print('No app found with bundle ID: $bundleId');
       return null;
     }
-
     final token = _generateToken();
     final headers = {'Authorization': 'Bearer $token'};
     // Sort by version and get the first one to find the latest
@@ -73,39 +69,10 @@ class AppStoreApiClient {
     if (data['data'] == null || data['data'].isEmpty) {
       return null;
     }
-
-    // This now correctly returns the marketing version string, e.g., '1.0.16'
     return data['data'][0]['attributes']['version'];
   }
 
-  /// Retrieves the latest build number for a given marketing version.
-  Future<int> getLatestBuildNumber(String marketingVersion) async {
-    final appId = await _getAppId();
-    if (appId == null) {
-      return 0;
-    }
-    final token = _generateToken();
-    final headers = {'Authorization': 'Bearer $token'};
-    final url = Uri.parse(
-        '$_apiBaseUrl/builds?filter[app]=$appId&filter[version]=$marketingVersion&sort=-uploadedDate&limit=1');
-    final response = await http.get(url, headers: headers);
-
-    if (response.statusCode != 200) {
-      return 0;
-    }
-    final data = json.decode(response.body);
-    if (data['data'] == null || data['data'].isEmpty) {
-      return 0;
-    }
-
-    // The build number is typically the version number in the pubspec.yaml file, which is what we need to increment.
-    // The App Store Connect API 'version' attribute is the marketing version.
-    // We will retrieve the build number from the pubspec.yaml file in the deploy script.
-    // This function will now simply return 0 if no builds are found for the marketing version.
-    return 0;
-  }
-
-  /// NEW METHOD: Find a build by version and bundle ID
+  /// NEW METHOD: Find a build by version to get its `buildId`.
   Future<String?> _getBuildIdByVersion(String version) async {
     final appId = await _getAppId();
     if (appId == null) return null;
@@ -130,7 +97,7 @@ class AppStoreApiClient {
   /// Main method to upload IPA using `altool` and then manage with the API.
   Future<bool> uploadAndSubmit({
     required String ipaPath,
-    required String appVersion, // We now need the app version to find the build later.
+    required String appVersion,
     String? whatsNew,
     required bool submitForReview,
   }) async {
@@ -142,8 +109,8 @@ class AppStoreApiClient {
         '--upload-app',
         '-f',
         ipaPath,
-        '-t', // Use '-t' for the type flag
-        'ios', // Specify 'ios' as the platform type
+        '-t',
+        'ios',
         '--apiKey',
         keyId,
         '--apiIssuer',
@@ -159,7 +126,6 @@ class AppStoreApiClient {
       print(altoolResult.stdout);
 
       // Step 2: Poll for the new build to appear in App Store Connect.
-      // This is necessary because it takes a moment for the new build to be visible.
       print('Waiting for App Store Connect to register the new build...');
       String? buildId;
       const maxAttempts = 60; // Up to 5 minutes
