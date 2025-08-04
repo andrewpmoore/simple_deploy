@@ -1,3 +1,6 @@
+### `ios.md`
+
+```markdown
 ## Steps for configuring iOS deployment
 
 To deploy to Test Flight and optionally submit for App Store review, follow the steps below.
@@ -8,32 +11,25 @@ To deploy to Test Flight and optionally submit for App Store review, follow the 
 
 <img src="https://raw.githubusercontent.com/andrewpmoore/simple_deploy/main/images/apple0001.png" width="100%"/>
 
-<li>Find the <b>Developer ID</b> and make a note of it, this needs to be set in the <code>deploy.yaml</code> as the <code>developerId</code> property</li>
+<li>Find the **Issuer ID** and make a note of it, this needs to be set in the `deploy.yaml` as the `issuerId` property</li>
 
 <img src="https://raw.githubusercontent.com/andrewpmoore/simple_deploy/main/images/apple0002.png" width="100%"/>
 
-<li>Go to <b>Users and access</b>, <b>Integrations</b>, <b>Team Keys</b> then click on the <b>+</b> to add a key.</li>
+<li>Go to **Users and access**, **Integrations**, **Team Keys** then click on the **+** to add a key.</li>
 
 <img src="https://raw.githubusercontent.com/andrewpmoore/simple_deploy/main/images/apple0003.png" width="100%"/>
 
-<li>Give the Key a <code>name</code> and set the access to <code>App Manager</code> and press <b>Generate</b>.</li>
+<li>Give the Key a `name` and set the access to `App Manager` and press **Generate**.</li>
 
 <img src="https://raw.githubusercontent.com/andrewpmoore/simple_deploy/main/images/apple0004.png" width="100%"/>
 
-<li>Copy the <b>Key ID</b> and place it into the <code>teamKeyId</code> in the <code>deploy.yaml</code> and press <b>Download</b> to download the private key</li>
+<li>Copy the **Key ID** and place it into the `keyId` in the `deploy.yaml` and press **Download** to download the private key</li>
 
 <img src="https://raw.githubusercontent.com/andrewpmoore/simple_deploy/main/images/apple0005.png" width="100%"/>
 
 </ol>
 
-Place the downloaded file onto your build machine in one of the following directories
-
-```agsl
-./private_keys
-~/private_keys
-~/.private_keys
-~/.appstoreconnect/private_keys
-```
+Place the downloaded file onto your build machine and set the path to this file as `privateKeyPath` in your `deploy.yaml`. For example, `privateKeyPath: "path/to/your/AuthKey_XXXXXXXXXX.p8"`.
 
 ### Configuration for App Store Review Submission
 
@@ -44,13 +40,13 @@ ios:
   # ... existing configuration ...
   bundleId: "com.example.coolapp" # Required for App Store submission
   whatsNew: "New features and improvements" # Optional, used for App Store submission
-```
-
 You can then submit to App Store review using:
 
 ```bash
 dart run simple_deploy ios --submit-review
 ```
+You can then submit to App Store review using:
+
 
 This will:
 

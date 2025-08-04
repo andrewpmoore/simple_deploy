@@ -1,6 +1,5 @@
 simple_deploy is a quick and easy way to deploy apps to the store's test systems
 
-NOTE: This is very much a work-in-progress package at the moment, until it reaches version 1.0
 
 ## Features
 
@@ -55,17 +54,15 @@ android:
   generatedFileName: "fancyproject.aab"       # supply a custom file name for the aab, or omit if using the default
 
 ios:
-  teamKeyId: "ABCD1A4A12"
-  developerId: "76a6aa66-e80a-67e9-e987-6a1c711a4b2"
-  bundleId: "com.example.coolapp"  # Required for App Store submission
-  whatsNew: "New features and improvements"  # Optional, used for App Store submission
-  flavor: "flavor"            # specify a flavor if required, or omit if not using flavors
-  generatedFileName: "fancyproject.ipa"         # supply a custom file name for the ipa, or omit if using the default
   # App Store Connect API configuration (required for storeIncrement version strategy)
   issuerId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  # App Store Connect API Issuer ID
   keyId: "XXXXXXXXXX"  # App Store Connect API Key ID
   privateKeyPath: "path/to/AuthKey_XXXXXXXXXX.p8"  # Path to your private key file
-  autoIncrementMarketingVersion: true # defaults to true, updates the first part of the 'version' in the pubspec.yaml, e.g. 1.0.15+39 (it would increment to 1.0.16)
+  bundleId: "com.example.coolapp"  # Required for App Store submission
+  whatsNew: "New features and improvements"  # Optional, used for App Store submission
+  flavor: "flavor"            # specify a flavor if required, or omit if not using flavors
+  generatedFileName: "fancyproject.ipa"         # supply a custom file name for the ipa, or omit if using the default
+  autoIncrementMarketingVersion: false # defaults to false, updates the first part of the 'version' in the pubspec.yaml, e.g. 1.0.15+39 (it would increment to 1.0.16)
 ```
 
 #### Parameter details
