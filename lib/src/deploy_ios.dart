@@ -41,18 +41,20 @@ Future<void> deploy(
     bundleId: bundleId!,
   );
 
-  // 2. Handle version increment if requested
+  // 2. Handle version increment if requested and get the final app version
+  final pubspecFile = File('pubspec.yaml');
+  final pubspecContent = await pubspecFile.readAsString();
+  final editor = YamlEditor(pubspecContent);
+  final currentVersionString = (loadYaml(pubspecContent) as YamlMap)['version'] as String;
+  // The app version is the part before the '+', e.g., '1.0.0' from '1.0.0+1'.
+  final appVersion = currentVersionString.split('+').first;
+
   if (useStoreIncrement) {
     print('Checking TestFlight for latest build number...');
     final latestBuildNumber = await appStoreApi.getLatestBuildNumber();
     final nextBuildNumber = latestBuildNumber + 1;
-
-    final pubspecFile = File('pubspec.yaml');
-    final pubspecContent = await pubspecFile.readAsString();
-    final editor = YamlEditor(pubspecContent);
-    final currentVersion = (loadYaml(pubspecContent) as YamlMap)['version'] as String;
-    final newVersion = '${currentVersion.split('+').first}+$nextBuildNumber';
-    editor.update(['version'], newVersion);
+    final newVersionString = '$appVersion+$nextBuildNumber';
+    editor.update(['version'], newVersionString);
     await pubspecFile.writeAsString(editor.toString());
     print('Updated pubspec.yaml build number to $nextBuildNumber.');
   }
@@ -78,10 +80,10 @@ Future<void> deploy(
   final ipaPath = '$workingDirectory/build/ios/ipa/$ipaName';
   final whatsNew = config?['whatsNew']?.toString();
 
-  // As noted, a real implementation for the IPA upload is required in the API client.
-  // The line below assumes the client can handle it.
+  // The 'appVersion' parameter is now correctly passed to the method.
   bool success = await appStoreApi.uploadAndSubmit(
     ipaPath: ipaPath,
+    appVersion: appVersion,
     whatsNew: whatsNew,
     submitForReview: submitToReview,
   );
