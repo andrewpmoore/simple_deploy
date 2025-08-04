@@ -1,4 +1,4 @@
-## 1.0.0-dev.7
+## 1.0.0-dev.8
 - Breaking Changes - `teamKeyId` and `developerId` removed from iOS config and replaced, see example in the readme.md, this allows for more control in deployment
 - Added `versionStrategy: "storeIncrement"` which will get the current store build number and increment it by 1
 - Added support for submitting iOS apps directly to App Store review

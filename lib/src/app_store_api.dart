@@ -108,6 +108,8 @@ class AppStoreApiClient {
         '--upload-app',
         '-f',
         ipaPath,
+        '-t', // Use '-t' for the type flag
+        'ios', // Specify 'ios' as the platform type
         '--apiKey',
         keyId,
         '--apiIssuer',
