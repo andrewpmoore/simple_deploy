@@ -1,3 +1,5 @@
+// app_store_api.dart
+
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -49,16 +51,17 @@ class AppStoreApiClient {
     return data['data'][0]['id'];
   }
 
-  /// Retrieves the latest app version string (e.g., '1.0.16.38') from TestFlight.
-  Future<String?> getLatestAppVersion() async {
+  /// [MODIFIED] Retrieves the latest build details (marketing version and build number) from TestFlight.
+  Future<Map<String, dynamic>?> getLatestBuildDetails() async {
     final appId = await _getAppId();
     if (appId == null) {
       return null;
     }
     final token = _generateToken();
     final headers = {'Authorization': 'Bearer $token'};
-    // Sort by version and get the first one to find the latest
-    final url = Uri.parse('$_apiBaseUrl/builds?filter[app]=$appId&sort=-version&limit=1');
+    // Sort by uploadedDate to reliably get the latest build.
+    // Include preReleaseVersion to get the marketing version string.
+    final url = Uri.parse('$_apiBaseUrl/builds?filter[app]=$appId&sort=-uploadedDate&limit=1&include=preReleaseVersion');
     final response = await http.get(url, headers: headers);
 
     if (response.statusCode != 200) {
@@ -67,24 +70,48 @@ class AppStoreApiClient {
     }
     final data = json.decode(response.body);
     if (data['data'] == null || data['data'].isEmpty) {
+      return null; // No builds found.
+    }
+
+    final latestBuild = data['data'][0];
+    final buildNumberString = latestBuild['attributes']['version'];
+
+    String? marketingVersion;
+    if (data['included'] != null && (data['included'] as List).isNotEmpty) {
+      final preReleaseInfo = (data['included'] as List).firstWhere(
+            (item) => item['type'] == 'preReleaseVersions',
+        orElse: () => null,
+      );
+      if (preReleaseInfo != null) {
+        marketingVersion = preReleaseInfo['attributes']['version'];
+      }
+    }
+
+    if (buildNumberString == null || marketingVersion == null) {
+      print('Could not determine full version info from API response.');
       return null;
     }
-    return data['data'][0]['attributes']['version'];
+
+    return {
+      'marketingVersion': marketingVersion,
+      'buildNumber': int.parse(buildNumberString),
+    };
   }
 
-  /// NEW METHOD: Find a build by version to get its `buildId`.
-  Future<String?> _getBuildIdByVersion(String version) async {
+
+  /// [MODIFIED] Finds a build by its marketing version AND build number.
+  Future<String?> _getBuildIdByVersion(String marketingVersion, String buildNumber) async {
     final appId = await _getAppId();
     if (appId == null) return null;
 
     final token = _generateToken();
     final headers = {'Authorization': 'Bearer $token'};
-    // We filter by both app and the version string to find the correct build.
-    final url = Uri.parse('$_apiBaseUrl/builds?filter[app]=$appId&filter[version]=$version');
+    // Filter by both the marketing version (preReleaseVersion.version) and the build number (version).
+    final url = Uri.parse('$_apiBaseUrl/builds?filter[app]=$appId&filter[preReleaseVersion.version]=$marketingVersion&filter[version]=$buildNumber&limit=1');
     final response = await http.get(url, headers: headers);
 
     if (response.statusCode != 200) {
-      print('Failed to find build for version $version: ${response.body}');
+      print('Failed to find build for version $marketingVersion ($buildNumber): ${response.body}');
       return null;
     }
     final data = json.decode(response.body);
@@ -94,15 +121,17 @@ class AppStoreApiClient {
     return data['data'][0]['id'];
   }
 
-  /// Main method to upload IPA using `altool` and then manage with the API.
+
+  /// [MODIFIED] Main method to upload IPA and then manage with the API.
   Future<bool> uploadAndSubmit({
     required String ipaPath,
     required String appVersion,
+    required String buildNumber, // Added buildNumber parameter
     String? whatsNew,
     required bool submitForReview,
   }) async {
     try {
-      // Step 1: Use `altool` to upload the IPA file.
+      // Step 1: Use `altool` (via xcrun) to upload the IPA file.
       print('Uploading IPA using altool...');
       final altoolResult = await Process.run('xcrun', [
         'altool',
@@ -126,11 +155,12 @@ class AppStoreApiClient {
       print(altoolResult.stdout);
 
       // Step 2: Poll for the new build to appear in App Store Connect.
-      print('Waiting for App Store Connect to register the new build...');
+      print('Waiting for App Store Connect to register the new build ($appVersion+$buildNumber)...');
       String? buildId;
-      const maxAttempts = 60; // Up to 5 minutes
+      const maxAttempts = 60; // Poll for up to 5 minutes
       for (int i = 0; i < maxAttempts; i++) {
-        buildId = await _getBuildIdByVersion(appVersion);
+        // Use the updated method with both version components
+        buildId = await _getBuildIdByVersion(appVersion, buildNumber);
         if (buildId != null) {
           print('Found build with ID: $buildId');
           break;
@@ -139,7 +169,7 @@ class AppStoreApiClient {
       }
 
       if (buildId == null) {
-        print('Failed to find the new build in App Store Connect.');
+        print('Failed to find the new build in App Store Connect after upload.');
         return false;
       }
 

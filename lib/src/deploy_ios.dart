@@ -16,11 +16,12 @@ void handleError(String message) {
 bool isVersionHigher(String newVersion, String oldVersion) {
   final newParts = newVersion.split('.').map(int.parse).toList();
   final oldParts = oldVersion.split('.').map(int.parse).toList();
-  for (var i = 0; i < newParts.length; i++) {
+  final minLength = newParts.length < oldParts.length ? newParts.length : oldParts.length;
+  for (var i = 0; i < minLength; i++) {
     if (newParts[i] > oldParts[i]) return true;
     if (newParts[i] < oldParts[i]) return false;
   }
-  return false;
+  return newParts.length > oldParts.length;
 }
 
 Future<void> deploy(
@@ -40,6 +41,9 @@ Future<void> deploy(
   final keyId = config?['keyId']?.toString();
   final privateKeyPath = config?['privateKeyPath']?.toString();
   final bundleId = config?['bundleId']?.toString();
+  // [NEW] Read the new configuration key. Defaults to false.
+  final autoIncrementMarketingVersion = config?['autoIncrementMarketingVersion'] as bool? ?? false;
+
 
   if (issuerId == null || keyId == null || privateKeyPath == null || bundleId == null) {
     handleError('ios config in deploy.yaml must include issuerId, keyId, privateKeyPath, and bundleId.');
@@ -52,41 +56,55 @@ Future<void> deploy(
     bundleId: bundleId!,
   );
 
-  // 2. Handle version increment if requested and get the final app version
+  // 2. Handle versioning
   final pubspecFile = File('pubspec.yaml');
   final pubspecContent = await pubspecFile.readAsString();
   final editor = YamlEditor(pubspecContent);
   final currentVersionString = (loadYaml(pubspecContent) as YamlMap)['version'] as String;
 
-  // Correctly split the version string into marketing version and build number.
   final parts = currentVersionString.split('+');
   String marketingVersion = parts[0];
   int buildNumber = int.parse(parts[1]);
 
+  // [MODIFIED] Overhauled version increment logic
   if (useStoreIncrement) {
     print('Checking TestFlight for latest build details...');
-    final latestAppVersion = await appStoreApi.getLatestAppVersion();
+    // Use the new, corrected API method
+    final latestBuildDetails = await appStoreApi.getLatestBuildDetails();
 
-    if (latestAppVersion != null) {
-      final latestParts = latestAppVersion.split('+');
-      final latestMarketingVersion = latestParts[0];
-      final latestBuildNumber = int.parse(latestParts[1]);
+    int latestStoreBuildNumber = 0;
+    if (latestBuildDetails != null) {
+      final storeMarketingVersion = latestBuildDetails['marketingVersion'] as String;
+      latestStoreBuildNumber = latestBuildDetails['buildNumber'] as int;
 
-      if (isVersionHigher(latestMarketingVersion, marketingVersion)) {
-        // If the store's marketing version is higher, we must use it and increment the build number.
-        marketingVersion = latestMarketingVersion;
-        buildNumber = latestBuildNumber + 1;
-        print('Updated marketing version to match store: $marketingVersion');
-      } else {
-        // Otherwise, we simply increment the local build number.
-        buildNumber = latestBuildNumber + 1;
+      print('Found store version: $storeMarketingVersion+$latestStoreBuildNumber');
+
+      // If the store's marketing version is higher, we must adopt it.
+      if (isVersionHigher(storeMarketingVersion, marketingVersion)) {
+        marketingVersion = storeMarketingVersion;
+        print('Adopted marketing version from App Store: $marketingVersion');
+      }
+    } else {
+      print('No existing builds found in App Store Connect.');
+    }
+
+    // Always increment build number based on the latest from the store.
+    buildNumber = latestStoreBuildNumber + 1;
+    print('New build number will be $buildNumber.');
+
+    // If auto-increment is enabled, increment the patch version.
+    if (autoIncrementMarketingVersion) {
+      final marketingParts = marketingVersion.split('.').map(int.parse).toList();
+      if (marketingParts.isNotEmpty) {
+        marketingParts[marketingParts.length - 1]++; // Increment the last part
+        marketingVersion = marketingParts.join('.');
+        print('Auto-incremented marketing version to: $marketingVersion');
       }
     }
 
-    print('Updated build number to $buildNumber.');
-
-    // Update pubspec.yaml with the new version string
+    // Update pubspec.yaml with the new final version string
     final newVersionString = '$marketingVersion+$buildNumber';
+    print('Updating pubspec.yaml to version: $newVersionString');
     editor.update(['version'], newVersionString);
     await pubspecFile.writeAsString(editor.toString());
   }
@@ -117,9 +135,11 @@ Future<void> deploy(
   final ipaPath = '$workingDirectory/build/ios/ipa/$ipaName';
   final whatsNew = config?['whatsNew']?.toString();
 
+  // [MODIFIED] Pass the final build number to the API client
   bool success = await appStoreApi.uploadAndSubmit(
     ipaPath: ipaPath,
     appVersion: marketingVersion,
+    buildNumber: buildNumber.toString(),
     whatsNew: whatsNew,
     submitForReview: submitToReview,
   );
