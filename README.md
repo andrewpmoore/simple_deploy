@@ -28,17 +28,17 @@ android:
   whatsNew: "Simple bug fixes"
 
 ios:
-  teamKeyId: "ABCD1A4A12"
-  developerId: "76a6aa66-e80a-67e9-e987-6a1c711a4b2"
-  bundleId: "com.example.coolapp"  # Required for App Store submission
-  whatsNew: "New features and improvements"  # Optional, used for App Store submission
-  flavor: "flavor"            # specify a flavor if required, or omit if not using flavors
-  generatedFileName: "fancyproject.ipa"         # supply a custom file name for the ipa, or omit if using the default
-  # App Store Connect API configuration (required for storeIncrement version strategy)
-  issuerId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  # App Store Connect, Users and Access, Integrations, App Store Connect API, issuerId 
-  keyId: "XXXXXXXXXX"  # App Store Connect API Key ID
-  privateKeyPath: "path/to/AuthKey_XXXXXXXXXX.p8"  # Path to your private key file
-```
+  # App Store Connect API configuration (All fields are required)
+  issuerId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  keyId: "XXXXXXXXXX"
+  privateKeyPath: "path/to/your/AuthKey_XXXXXXXXXX.p8"
+  bundleId: "com.example.coolapp"
+  
+  # Optional fields
+  whatsNew: "New features and improvements" # For "What's New" text in TestFlight
+  flavor: "production"                   # Omit if not using flavors
+  generatedFileName: "custom_name.ipa"   # Omit to use the default ipa name
+  ```
 
 And here's a version with all options set:
 

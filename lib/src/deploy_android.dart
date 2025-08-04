@@ -134,7 +134,7 @@ Future<void> deploy(
       stopLoading();
       return;
     }
-    print('App bundle built successfully');
+    print('✅ App bundle built successfully');
 
 
     startLoading('Upload app bundle');
@@ -167,9 +167,9 @@ Future<void> deploy(
     print("Assigned bundle to $trackName track with release notes");
 
     await androidPublisher.edits.commit(packageName, editId);
-    print("Edit committed, upload complete.");
+    print("✅ Edit committed, upload complete.");
   } catch (e) {
-    print("Failed to upload to Play Console: $e");
+    print("❌ Failed to upload to Play Console: $e");
   } finally {
     httpClient.close();
     print('Time taken: ${DateTime.now().difference(startTime)}');
