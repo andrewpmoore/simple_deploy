@@ -58,22 +58,22 @@ Future<void> deploy(
   final editor = YamlEditor(pubspecContent);
   final currentVersionString = (loadYaml(pubspecContent) as YamlMap)['version'] as String;
 
-  // The version format is now handled correctly (e.g., '1.0.15.37')
-  final parts = currentVersionString.split('.');
-  String marketingVersion = parts.sublist(0, parts.length - 1).join('.');
-  int buildNumber = int.parse(parts.last);
+  // Correctly split the version string into marketing version and build number.
+  final parts = currentVersionString.split('+');
+  String marketingVersion = parts[0];
+  int buildNumber = int.parse(parts[1]);
 
   if (useStoreIncrement) {
     print('Checking TestFlight for latest build details...');
     final latestAppVersion = await appStoreApi.getLatestAppVersion();
 
     if (latestAppVersion != null) {
-      final latestParts = latestAppVersion.split('.');
-      final latestMarketingVersion = latestParts.sublist(0, latestParts.length - 1).join('.');
-      final latestBuildNumber = int.parse(latestParts.last);
+      final latestParts = latestAppVersion.split('+');
+      final latestMarketingVersion = latestParts[0];
+      final latestBuildNumber = int.parse(latestParts[1]);
 
       if (isVersionHigher(latestMarketingVersion, marketingVersion)) {
-        // If the store's marketing version is higher, we must use it.
+        // If the store's marketing version is higher, we must use it and increment the build number.
         marketingVersion = latestMarketingVersion;
         buildNumber = latestBuildNumber + 1;
         print('Updated marketing version to match store: $marketingVersion');
@@ -86,7 +86,7 @@ Future<void> deploy(
     print('Updated build number to $buildNumber.');
 
     // Update pubspec.yaml with the new version string
-    final newVersionString = '$marketingVersion.$buildNumber';
+    final newVersionString = '$marketingVersion+$buildNumber';
     editor.update(['version'], newVersionString);
     await pubspecFile.writeAsString(editor.toString());
   }
@@ -102,9 +102,8 @@ Future<void> deploy(
   var buildResult = await Process.run('flutter', [
     'build', 'ipa',
     if (flavor != null) ...['--flavor', flavor],
-    // Use the build-name and build-number flags to ensure Info.plist is correctly updated.
     '--build-name=$marketingVersion',
-    '--build-number=$buildNumber.0', // Build number for iOS should be an integer, but Flutter's flag takes a string
+    '--build-number=$buildNumber',
   ],
       workingDirectory: workingDirectory, runInShell: true);
 
@@ -120,7 +119,7 @@ Future<void> deploy(
 
   bool success = await appStoreApi.uploadAndSubmit(
     ipaPath: ipaPath,
-    appVersion: marketingVersion, // Pass the marketing version here
+    appVersion: marketingVersion,
     whatsNew: whatsNew,
     submitForReview: submitToReview,
   );
