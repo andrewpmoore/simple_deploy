@@ -12,6 +12,17 @@ void handleError(String message) {
   exit(1);
 }
 
+// Helper function to compare version strings (e.g., '1.0.5' vs '1.0.16')
+bool isVersionHigher(String newVersion, String oldVersion) {
+  final newParts = newVersion.split('.').map(int.parse).toList();
+  final oldParts = oldVersion.split('.').map(int.parse).toList();
+  for (var i = 0; i < newParts.length; i++) {
+    if (newParts[i] > oldParts[i]) return true;
+    if (newParts[i] < oldParts[i]) return false;
+  }
+  return false;
+}
+
 Future<void> deploy(
     {String? flavor,
       bool skipClean = false,
@@ -29,6 +40,7 @@ Future<void> deploy(
   final keyId = config?['keyId']?.toString();
   final privateKeyPath = config?['privateKeyPath']?.toString();
   final bundleId = config?['bundleId']?.toString();
+  final autoIncrementMarketingVersion = config?['autoIncrementMarketingVersion'] as bool? ?? true;
 
   if (issuerId == null || keyId == null || privateKeyPath == null || bundleId == null) {
     handleError('ios config in deploy.yaml must include issuerId, keyId, privateKeyPath, and bundleId.');
@@ -46,17 +58,32 @@ Future<void> deploy(
   final pubspecContent = await pubspecFile.readAsString();
   final editor = YamlEditor(pubspecContent);
   final currentVersionString = (loadYaml(pubspecContent) as YamlMap)['version'] as String;
-  // The app version is the part before the '+', e.g., '1.0.0' from '1.0.0+1'.
-  final appVersion = currentVersionString.split('+').first;
+
+  String appVersion = currentVersionString.split('+').first;
+  int buildNumber = int.parse(currentVersionString.split('+').last);
 
   if (useStoreIncrement) {
-    print('Checking TestFlight for latest build number...');
-    final latestBuildNumber = await appStoreApi.getLatestBuildNumber();
-    final nextBuildNumber = latestBuildNumber + 1;
-    final newVersionString = '$appVersion+$nextBuildNumber';
+    print('Checking TestFlight for latest build details...');
+
+    if (autoIncrementMarketingVersion) {
+      final latestMarketingVersion = await appStoreApi.getLatestMarketingVersion();
+
+      if (latestMarketingVersion != null && isVersionHigher(latestMarketingVersion, appVersion)) {
+        // Marketing version is lower than the last one in the store, so we need to update it.
+        appVersion = latestMarketingVersion;
+        print('Updated app version to match store: $appVersion');
+      }
+    }
+
+    // Get the latest build number for this marketing version
+    final latestBuildNumber = await appStoreApi.getLatestBuildNumber(appVersion);
+    buildNumber = latestBuildNumber + 1;
+    print('Updated pubspec.yaml build number to $buildNumber.');
+
+    // Update pubspec.yaml with the new version string
+    final newVersionString = '$appVersion+$buildNumber';
     editor.update(['version'], newVersionString);
     await pubspecFile.writeAsString(editor.toString());
-    print('Updated pubspec.yaml build number to $nextBuildNumber.');
   }
 
   DateTime startTime = DateTime.now();
@@ -67,7 +94,12 @@ Future<void> deploy(
   }
 
   print('Building the iOS .ipa ${flavor != null ? "for $flavor flavor" : ""}');
-  var buildResult = await Process.run('flutter', ['build', 'ipa', if (flavor != null) ...['--flavor', flavor]],
+  var buildResult = await Process.run('flutter', [
+    'build', 'ipa',
+    if (flavor != null) ...['--flavor', flavor],
+    '--build-name=$appVersion',
+    '--build-number=$buildNumber',
+  ],
       workingDirectory: workingDirectory, runInShell: true);
 
   if (buildResult.exitCode != 0) {
@@ -80,7 +112,6 @@ Future<void> deploy(
   final ipaPath = '$workingDirectory/build/ios/ipa/$ipaName';
   final whatsNew = config?['whatsNew']?.toString();
 
-  // The 'appVersion' parameter is now correctly passed to the method.
   bool success = await appStoreApi.uploadAndSubmit(
     ipaPath: ipaPath,
     appVersion: appVersion,

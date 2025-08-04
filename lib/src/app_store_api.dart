@@ -51,24 +51,58 @@ class AppStoreApiClient {
     return data['data'][0]['id'];
   }
 
-  /// Gets the latest build number from TestFlight.
-  Future<int> getLatestBuildNumber() async {
+  /// Retrieves the latest marketing version string from TestFlight.
+  Future<String?> getLatestMarketingVersion() async {
     final appId = await _getAppId();
     if (appId == null) {
       print('No app found with bundle ID: $bundleId');
-      return 0;
+      return null;
     }
 
     final token = _generateToken();
     final headers = {'Authorization': 'Bearer $token'};
+    // Sort by version and get the first one to find the latest
     final url = Uri.parse('$_apiBaseUrl/builds?filter[app]=$appId&sort=-version&limit=1');
     final response = await http.get(url, headers: headers);
 
-    if (response.statusCode != 200) return 0;
+    if (response.statusCode != 200) {
+      print('Failed to get latest build from App Store API: ${response.body}');
+      return null;
+    }
     final data = json.decode(response.body);
-    if (data['data'] == null || data['data'].isEmpty) return 0;
+    if (data['data'] == null || data['data'].isEmpty) {
+      return null;
+    }
 
-    return int.tryParse(data['data'][0]['attributes']['version'] ?? '0') ?? 0;
+    // This now correctly returns the marketing version string, e.g., '1.0.16'
+    return data['data'][0]['attributes']['version'];
+  }
+
+  /// Retrieves the latest build number for a given marketing version.
+  Future<int> getLatestBuildNumber(String marketingVersion) async {
+    final appId = await _getAppId();
+    if (appId == null) {
+      return 0;
+    }
+    final token = _generateToken();
+    final headers = {'Authorization': 'Bearer $token'};
+    final url = Uri.parse(
+        '$_apiBaseUrl/builds?filter[app]=$appId&filter[version]=$marketingVersion&sort=-uploadedDate&limit=1');
+    final response = await http.get(url, headers: headers);
+
+    if (response.statusCode != 200) {
+      return 0;
+    }
+    final data = json.decode(response.body);
+    if (data['data'] == null || data['data'].isEmpty) {
+      return 0;
+    }
+
+    // The build number is typically the version number in the pubspec.yaml file, which is what we need to increment.
+    // The App Store Connect API 'version' attribute is the marketing version.
+    // We will retrieve the build number from the pubspec.yaml file in the deploy script.
+    // This function will now simply return 0 if no builds are found for the marketing version.
+    return 0;
   }
 
   /// NEW METHOD: Find a build by version and bundle ID

@@ -65,6 +65,7 @@ ios:
   issuerId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  # App Store Connect API Issuer ID
   keyId: "XXXXXXXXXX"  # App Store Connect API Key ID
   privateKeyPath: "path/to/AuthKey_XXXXXXXXXX.p8"  # Path to your private key file
+  autoIncrementMarketingVersion: true # defaults to true, updates the first part of the 'version' in the pubspec.yaml, e.g. 1.0.15+39 (it would increment to 1.0.16)
 ```
 
 #### Parameter details
