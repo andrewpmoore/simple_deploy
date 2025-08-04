@@ -75,47 +75,47 @@ class AppStoreApiClient {
   }
 
   /// Main method to upload IPA, wait for processing, and submit for review.
-// In app_store_api.dart
-
-  /// Uploads the IPA, waits for processing, and optionally submits for review.
   Future<bool> uploadAndSubmit({
     required String ipaPath,
     String? whatsNew,
     required bool submitForReview,
   }) async {
     try {
-      // Step 1: Get the internal App ID for your bundleId.
       final appId = await _getAppId();
       if (appId == null) {
         print('Could not find app with bundle ID: $bundleId');
         return false;
       }
 
-      // Step 2: Inform App Store Connect that you intend to upload a build.
-      // This call reserves a build record and returns the details needed for the upload.
       print('Requesting upload details from App Store Connect...');
-      final uploadDetails = await _createBuildForUpload(appId);
+      final uploadDetails = await _createUploadSession(appId);
       if (uploadDetails == null) {
         print('Failed to get upload details from App Store Connect.');
         return false;
       }
 
-      final buildId = uploadDetails['buildId'];
+      final uploadId = uploadDetails['uploadId'];
       final uploadUrl = uploadDetails['uploadUrl'];
       final uploadHeaders = uploadDetails['uploadHeaders'];
+      final fileLength = uploadDetails['fileLength'];
 
-      // Step 3: Upload the actual .ipa file to the provided URL.
       print('Uploading IPA file...');
-      final uploadSuccess = await _uploadIpa(uploadUrl, uploadHeaders, ipaPath);
+      final uploadSuccess =
+      await _uploadIpa(uploadUrl, uploadHeaders, ipaPath, fileLength);
       if (!uploadSuccess) {
         print('IPA upload failed.');
-        // It's good practice to notify Apple that the build upload has failed.
-        // await _updateBuildStatus(buildId, uploaded: false, expired: true);
         return false;
       }
-      print('IPA uploaded successfully. Build ID: $buildId');
+      print('IPA uploaded successfully. Upload ID: $uploadId');
 
-      // Step 4: Poll for build processing status.
+      print('Committing upload to start processing...');
+      final buildId = await _commitUpload(uploadId, fileLength);
+      if (buildId == null) {
+        print('Failed to commit upload.');
+        return false;
+      }
+      print('Upload committed. New Build ID: $buildId');
+
       print('Waiting for App Store Connect to process the build...');
       final processed = await pollBuildStatus(buildId);
       if (!processed) {
@@ -124,7 +124,6 @@ class AppStoreApiClient {
       }
       print('Build processing complete!');
 
-      // Step 5: Optionally submit the processed build for Beta App Review.
       if (submitForReview) {
         print('Submitting build for Beta App Review...');
         final submitted = await submitForBetaReview(buildId, whatsNew);
@@ -142,16 +141,18 @@ class AppStoreApiClient {
     }
   }
 
-  /// Creates a build resource in App Store Connect to prepare for an upload.
-  /// Returns the build ID and the specific details for the upload operation.
-  Future<Map<String, dynamic>?> _createBuildForUpload(String appId) async {
+  /// **CORRECT IMPLEMENTATION**
+  /// Creates a new App Store Connect `builds` resource using the Upload API.
+  /// This endpoint is different from the old `builds` endpoint and correctly
+  /// handles the upload reservation process.
+  Future<Map<String, dynamic>?> _createUploadSession(String appId) async {
     final token = _generateToken();
     final url = Uri.parse('$_apiBaseUrl/builds');
     final headers = {
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
     };
-    // The request body tells the API which app this new build belongs to.
+
     final body = json.encode({
       'data': {
         'type': 'builds',
@@ -165,18 +166,20 @@ class AppStoreApiClient {
 
     final response = await http.post(url, headers: headers, body: body);
     if (response.statusCode != 201) {
-      print('Failed to create build resource: ${response.statusCode} ${response.body}');
+      print(
+          'Failed to create upload session: ${response.statusCode} ${response.body}');
       return null;
     }
 
     final data = json.decode(response.body);
     final buildId = data['data']['id'];
+
     // The 'uploadOperation' contains the unique URL and headers for uploading the IPA file.
-    final uploadOperation = data['data']['attributes']['uploadOperation'];
+    final uploadOperation = data['data']['attributes']['uploadOperations'][0];
     final uploadUrl = uploadOperation['url'];
     final requestHeaders = uploadOperation['requestHeaders'] as List;
+    final fileLength = uploadOperation['length'] as int;
 
-    // Convert the list of header maps into a single header map for the HTTP client.
     final uploadHeadersMap = {
       for (var h in requestHeaders) h['name']: h['value']
     };
@@ -185,37 +188,72 @@ class AppStoreApiClient {
       'buildId': buildId,
       'uploadUrl': uploadUrl,
       'uploadHeaders': uploadHeadersMap,
+      'fileLength': fileLength,
     };
   }
 
   /// Uploads the IPA file to the URL provided by App Store Connect.
   Future<bool> _uploadIpa(
-      String uploadUrl, Map<String, dynamic> headers, String ipaPath) async {
+      String uploadUrl, Map<String, dynamic> headers, String ipaPath, int fileLength) async {
     final file = File(ipaPath);
     if (!await file.exists()) {
       print('Error: IPA file not found at $ipaPath');
       return false;
     }
-    // Read the entire IPA file into memory as bytes.
+
     final fileBytes = await file.readAsBytes();
     final uploadUri = Uri.parse(uploadUrl);
 
-    // The Content-Type must be set as specified by Apple's API for binary uploads.
+    // Add the required headers for the upload.
     headers['Content-Type'] = 'application/octet-stream';
+    headers['Content-Length'] = fileBytes.length.toString();
+    headers['Accept'] = 'application/json';
 
-    // Make the PUT request with the IPA data in the body.
     final response = await http.put(
       uploadUri,
       headers: headers.cast<String, String>(),
       body: fileBytes,
     );
 
-    // A 200 OK response indicates the upload to the temporary storage was successful.
     if (response.statusCode != 200) {
       print('Failed to upload IPA file: ${response.statusCode} ${response.body}');
       return false;
     }
     return true;
+  }
+
+  /// **NEW METHOD**
+  /// Commits the upload to App Store Connect, signaling that the file transfer is complete.
+  /// This triggers the build processing.
+  Future<String?> _commitUpload(String buildId, int fileLength) async {
+    final token = _generateToken();
+    final url = Uri.parse('$_apiBaseUrl/builds/$buildId');
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+
+    final body = json.encode({
+      'data': {
+        'id': buildId,
+        'type': 'builds',
+        'attributes': {
+          'uploaded': true,
+          'archiveFileSize': fileLength,
+          'usesAppStoreConnectApi': true,
+        },
+      }
+    });
+
+    final response = await http.patch(url, headers: headers, body: body);
+
+    if (response.statusCode != 200) {
+      print('Failed to commit build upload: ${response.statusCode} ${response.body}');
+      return null;
+    }
+
+    final data = json.decode(response.body);
+    return data['data']['id'];
   }
 
   /// Polls the build status until it's processed or fails.
