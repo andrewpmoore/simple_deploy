@@ -4,6 +4,7 @@ import 'package:args/args.dart';
 import 'package:simple_deploy/src/common.dart';
 import 'package:simple_deploy/src/deploy_android.dart' as android;
 import 'package:simple_deploy/src/deploy_ios.dart' as ios;
+import 'package:simple_deploy/src/loading.dart' as loading; // Import loading
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
@@ -37,41 +38,43 @@ void main(List<String> arguments) async {
   String? iosReleaseTypeCmd = argResults['ios-release-type'] as String?;
   String? iosScheduledReleaseDateCmd = argResults['ios-scheduled-release-date'] as String?;
 
-  if (argResults.rest.isEmpty) {
-    await promptAndDeploy(
-      flavor: flavorCmd,
-      shouldIncrementVersion: shouldIncrementVersionCmd,
-      shouldSubmitReview: shouldSubmitReviewCmd,
-      iosReleaseAfterReviewArg: iosReleaseAfterReviewCmd,
-      iosReleaseTypeArg: iosReleaseTypeCmd,
-      iosScheduledReleaseDateArg: iosScheduledReleaseDateCmd
-    );
-  } else {
-    String target = argResults.rest[0].toLowerCase();
-    if (target == 'ios') {
-      if (Platform.isMacOS) {
-        await deployIos(
-          flavor: flavorCmd,
-          shouldIncrementVersion: shouldIncrementVersionCmd,
-          shouldSubmitReview: shouldSubmitReviewCmd,
-          releaseAfterReviewArg: iosReleaseAfterReviewCmd,
-          releaseTypeArg: iosReleaseTypeCmd,
-          scheduledReleaseDateArg: iosScheduledReleaseDateCmd
-          // skipClean defaults to false here, which is appropriate
-        );
-      } else {
-        print('Error: You can only deploy to iOS from MacOS.');
-      }
-    } else if (target == 'android') {
-      await deployAndroid(
+  try {
+    if (argResults.rest.isEmpty) {
+      await promptAndDeploy(
         flavor: flavorCmd,
-        shouldIncrementVersion: shouldIncrementVersionCmd
-        // Android review submission is simpler for now, shouldSubmitReviewCmd could be passed if needed
+        shouldIncrementVersion: shouldIncrementVersionCmd,
+        shouldSubmitReview: shouldSubmitReviewCmd,
+        iosReleaseAfterReviewArg: iosReleaseAfterReviewCmd,
+        iosReleaseTypeArg: iosReleaseTypeCmd,
+        iosScheduledReleaseDateArg: iosScheduledReleaseDateCmd
       );
     } else {
-      print('Invalid argument. Please pass "ios" or "android".');
-      print(parser.usage);
+      String target = argResults.rest[0].toLowerCase();
+      if (target == 'ios') {
+        if (Platform.isMacOS) {
+          await deployIos(
+            flavor: flavorCmd,
+            shouldIncrementVersion: shouldIncrementVersionCmd,
+            shouldSubmitReview: shouldSubmitReviewCmd,
+            releaseAfterReviewArg: iosReleaseAfterReviewCmd,
+            releaseTypeArg: iosReleaseTypeCmd,
+            scheduledReleaseDateArg: iosScheduledReleaseDateCmd
+          );
+        } else {
+          print('Error: You can only deploy to iOS from MacOS.');
+        }
+      } else if (target == 'android') {
+        await deployAndroid(
+          flavor: flavorCmd,
+          shouldIncrementVersion: shouldIncrementVersionCmd
+        );
+      } else {
+        print('Invalid argument. Please pass "ios" or "android".');
+        print(parser.usage);
+      }
     }
+  } finally {
+    loading.stopLoading(); // Ensure loading stops in case of unexpected exit
   }
 }
 
@@ -131,7 +134,7 @@ Future<void> deployIos({
   bool? releaseAfterReviewArg,
   String? releaseTypeArg,
   String? scheduledReleaseDateArg,
-  bool skipClean = false // Now a named parameter, defaults to false
+  bool skipClean = false
 }) async {
   final workingDirectory = Directory.current.path;
   final versionStrategy = await handleVersionStrategy(workingDirectory, shouldIncrementVersion);
@@ -141,16 +144,20 @@ Future<void> deployIos({
   String? releaseType = releaseTypeArg ?? iosConfig?['releaseType'] as String?;
   String? scheduledReleaseDate = scheduledReleaseDateArg ?? iosConfig?['scheduledReleaseDate'] as String?;
 
-  print('Deploying to iOS...');
-  await ios.deploy(
-    flavor: flavor,
-    useStoreIncrement: versionStrategy == 'storeIncrement',
-    submitToReview: shouldSubmitReview,
-    skipClean: skipClean, // Correctly passed
-    releaseAfterReview: releaseAfterReview,
-    releaseType: releaseType,
-    scheduledReleaseDate: scheduledReleaseDate
-  );
+  loading.startLoading('Deploying to iOS...');
+  try {
+    await ios.deploy(
+      flavor: flavor,
+      useStoreIncrement: versionStrategy == 'storeIncrement',
+      submitToReview: shouldSubmitReview,
+      skipClean: skipClean,
+      releaseAfterReview: releaseAfterReview,
+      releaseType: releaseType,
+      scheduledReleaseDate: scheduledReleaseDate
+    );
+  } finally {
+    loading.stopLoading();
+  }
 }
 
 Future<void> deployAndroid({
@@ -159,11 +166,15 @@ Future<void> deployAndroid({
 }) async {
   final workingDirectory = Directory.current.path;
   final versionStrategy = await handleVersionStrategy(workingDirectory, shouldIncrementVersion);
-  print('Deploying to Android...');
-  await android.deploy(
-    flavor: flavor,
-    useStoreIncrement: versionStrategy == 'storeIncrement'
-  );
+  loading.startLoading('Deploying to Android...');
+  try {
+    await android.deploy(
+      flavor: flavor,
+      useStoreIncrement: versionStrategy == 'storeIncrement'
+    );
+  } finally {
+    loading.stopLoading();
+  }
 }
 
 Future<void> deployAll({
@@ -175,29 +186,33 @@ Future<void> deployAll({
   required String? iosScheduledReleaseDateArg
 }) async {
   final workingDirectory = Directory.current.path;
-  // Version strategy handled once for all based on shouldIncrementVersion flag
   await handleVersionStrategy(workingDirectory, shouldIncrementVersion);
   print('Deploying to all platforms...');
 
-  bool success = await flutterClean(workingDirectory);
+  loading.startLoading('Cleaning project...');
+  bool success;
+  try {
+    success = await flutterClean(workingDirectory);
+  } finally {
+    loading.stopLoading();
+  }
+
   if (!success) {
     print('Failed to clean project');
     return;
   }
 
-  // For deployAll, shouldIncrementVersion is now effectively false for these calls
-  // as it was handled by the global handleVersionStrategy above.
-  await deployAndroid(flavor: flavor, shouldIncrementVersion: false);
+  await deployAndroid(flavor: flavor, shouldIncrementVersion: false); // Loading handled within
 
   if (Platform.isMacOS) {
     await deployIos(
       flavor: flavor,
-      shouldIncrementVersion: false, // Handled globally
+      shouldIncrementVersion: false,
       shouldSubmitReview: shouldSubmitReview,
       releaseAfterReviewArg: iosReleaseAfterReviewArg,
       releaseTypeArg: iosReleaseTypeArg,
       scheduledReleaseDateArg: iosScheduledReleaseDateArg,
-      skipClean: true // Already cleaned globally
+      skipClean: true // Loading handled within
     );
   } else {
     print('iOS deployment is only available on MacOS.');
@@ -205,7 +220,8 @@ Future<void> deployAll({
 }
 
 Future<String> handleVersionStrategy(String workingDirectory, [bool cmdLineIncrement = false]) async {
-  String versionStrategy = 'none'; // Default
+  // ... (rest of the function remains the same, consider if loading needed here for incrementBuildNumber)
+  String versionStrategy = 'none';
   try {
     final config = await loadConfig(workingDirectory, 'common');
     versionStrategy = config?['versionStrategy'] as String? ?? 'none';
@@ -220,7 +236,12 @@ Future<String> handleVersionStrategy(String workingDirectory, [bool cmdLineIncre
   print('Version strategy: $versionStrategy');
 
   if (versionStrategy == 'pubspecIncrement') {
-    await incrementBuildNumber(workingDirectory);
+    loading.startLoading('Incrementing build number in pubspec.yaml...');
+    try {
+      await incrementBuildNumber(workingDirectory);
+    } finally {
+      loading.stopLoading();
+    }
   } else if (versionStrategy == 'storeIncrement') {
     print('Using store increment strategy - will get latest version from store (handled by platform-specific deploy).');
   } else if (versionStrategy == 'none') {
@@ -233,6 +254,7 @@ Future<String> handleVersionStrategy(String workingDirectory, [bool cmdLineIncre
 }
 
 Future<void> incrementBuildNumber(String workingDirectory) async {
+  // ... (rest of the function remains the same)
   final pubspecFile = File('$workingDirectory/pubspec.yaml');
   if (!await pubspecFile.exists()) {
     print('Error: pubspec.yaml not found at ${pubspecFile.path}');
@@ -265,3 +287,4 @@ Future<void> incrementBuildNumber(String workingDirectory) async {
   await pubspecFile.writeAsString(editor.toString());
   print('Updated build number to $newBuildNumber in pubspec.yaml (version: $newVersion)');
 }
+
