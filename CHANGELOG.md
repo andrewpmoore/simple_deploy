@@ -1,3 +1,7 @@
+## 1.1.0-dev.1
+- Attempt to get app store review submissions supported
+- Add support for dart-define parameters to override existing properties
+
 ## 1.0.0
 - Breaking Changes - `teamKeyId` and `developerId` removed from iOS config and replaced, see example in the readme.md, this allows for more control in deployment
 - Added `versionStrategy: "storeIncrement"` which will get the current store build number and increment it by 1

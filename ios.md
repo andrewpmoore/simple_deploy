@@ -31,28 +31,71 @@ To deploy to Test Flight and optionally submit for App Store review, follow the 
 
 Place the downloaded file onto your build machine and set the path to this file as `privateKeyPath` in your `deploy.yaml`. For example, `privateKeyPath: "path/to/your/AuthKey_XXXXXXXXXX.p8"`.
 
-### Configuration for App Store Review Submission
+### Configuration for App Store Submission
 
-To enable App Store review submission, add the following to your `deploy.yaml`:
+To enable submitting your app for App Store review (not just TestFlight beta review), you'll use the `--submit-review` flag. You can also control how the app is released after approval.
+
+**`deploy.yaml` Configuration:**
+
+Add or update the following keys in the `ios` section of your `deploy.yaml` file:
 
 ```yaml
 ios:
-  # ... existing configuration ...
-  bundleId: "com.example.coolapp" # Required for App Store submission
-  whatsNew: "New features and improvements" # Optional, used for App Store submission
-You can then submit to App Store review using:
+  # ... existing App Store Connect API configuration (issuerId, keyId, privateKeyPath) ...
+  bundleId: "com.example.coolapp"          # Required: Your app's bundle ID.
+  whatsNew: "New features and improvements" # Optional: Default "What's New" text for the submission.
+                                          # This is currently applied to the 'en-US' localization.
+  # New keys for App Store Release Management:
+  releaseAfterReview: false               # Optional (boolean, defaults to false): 
+                                          #   Set to true to automatically release the app after approval.
+  releaseType: "MANUAL"                   # Optional (String, defaults to MANUAL if releaseAfterReview is true, otherwise not set): 
+                                          #   How the app should be released.
+                                          #   Valid values:
+                                          #     "MANUAL" - Requires manual release from App Store Connect.
+                                          #     "AFTER_APPROVAL" - Releases automatically once Apple approves it.
+                                          #     "SCHEDULED" - Releases on a specific date/time after approval.
+  scheduledReleaseDate: null              # Optional (String: ISO 8601 format, e.g., "YYYY-MM-DDTHH:MM:SS.sssZ"):
+                                          #   The date for a scheduled release. Only used if releaseType is "SCHEDULED".
+  # ... other existing iOS configurations (flavor, generatedFileName, autoIncrementMarketingVersion) ...
+```
+
+**Command-Line Usage:**
+
+To build, upload, and submit your iOS app for App Store review:
 
 ```bash
 dart run simple_deploy ios --submit-review
 ```
-You can then submit to App Store review using:
 
+**Overriding Release Options via Command Line:**
 
-This will:
+You can override the `deploy.yaml` settings for release management using these command-line flags:
 
-1. Build and upload your IPA to TestFlight
-2. Wait for the build to finish processing (checks every 30 seconds, times out after 15 minutes)
-3. Once processed, submit the build for App Store review with your "What's New" text
+*   `--ios-release-after-review`:
+    *   If this flag is present, it sets `releaseAfterReview` to `true`.
+    *   If omitted, the value from `deploy.yaml` (or the default `false`) is used.
+    *   Example: `dart run simple_deploy ios --submit-review --ios-release-after-review`
 
-<b>If you are having problems</b>  
-Ensure that `flutter build ios` is working correctly as a command at the root of your project and resolve any errors associated with that.
+*   `--ios-release-type="<TYPE>"`:
+    *   Sets the release type. Replace `<TYPE>` with `MANUAL`, `AFTER_APPROVAL`, or `SCHEDULED`.
+    *   Example: `dart run simple_deploy ios --submit-review --ios-release-type="AFTER_APPROVAL"`
+
+*   `--ios-scheduled-release-date="<ISO_DATE_STRING>"`:
+    *   Sets the scheduled release date if `--ios-release-type` is `SCHEDULED`.
+    *   The date must be in ISO 8601 format (e.g., `2023-12-25T10:00:00.000Z`).
+    *   Example: `dart run simple_deploy ios --submit-review --ios-release-type="SCHEDULED" --ios-scheduled-release-date="2024-01-15T09:00:00Z"`
+
+**Process:**
+
+When using `--submit-review` for iOS with App Store submission enabled (which is the new default behavior for `--submit-review`):
+
+1.  Builds your IPA.
+2.  Uploads the IPA to App Store Connect.
+3.  Waits for the build to finish processing.
+4.  Submits the build for App Store review, using the "What's New" text and release settings from your `deploy.yaml` or command-line overrides.
+    *   **"What's New" Localization:** Currently, the "What's New" text is applied to the `en-US` localization. Future enhancements will support more languages.
+
+<b>If you are having problems</b>
+Ensure that `flutter build ios` is working correctly as a command at the root of your project and resolve any errors associated with that. Also, ensure your App Store Connect API key has "App Manager" permissions.
+
+```

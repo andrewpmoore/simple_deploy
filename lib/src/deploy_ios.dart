@@ -24,11 +24,16 @@ bool isVersionHigher(String newVersion, String oldVersion) {
   return newParts.length > oldParts.length;
 }
 
-Future<void> deploy(
-    {String? flavor,
-      bool skipClean = false,
-      bool submitToReview = false,
-      bool useStoreIncrement = false}) async {
+Future<void> deploy({
+  String? flavor,
+  bool skipClean = false,
+  bool submitToReview = false,
+  bool useStoreIncrement = false,
+  // New parameters for App Store release control
+  bool releaseAfterReview = false,
+  String? releaseType,
+  String? scheduledReleaseDate,
+}) async {
   final workingDirectory = Directory.current.path;
 
   // 1. Load configuration
@@ -41,9 +46,7 @@ Future<void> deploy(
   final keyId = config?['keyId']?.toString();
   final privateKeyPath = config?['privateKeyPath']?.toString();
   final bundleId = config?['bundleId']?.toString();
-  // [NEW] Read the new configuration key. Defaults to false.
   final autoIncrementMarketingVersion = config?['autoIncrementMarketingVersion'] as bool? ?? false;
-
 
   if (issuerId == null || keyId == null || privateKeyPath == null || bundleId == null) {
     handleError('ios config in deploy.yaml must include issuerId, keyId, privateKeyPath, and bundleId.');
@@ -66,10 +69,8 @@ Future<void> deploy(
   String marketingVersion = parts[0];
   int buildNumber = int.parse(parts[1]);
 
-  // [MODIFIED] Overhauled version increment logic
   if (useStoreIncrement) {
-    print('Checking TestFlight for latest build details...');
-    // Use the new, corrected API method
+    print('Checking App Store Connect for latest build details...');
     final latestBuildDetails = await appStoreApi.getLatestBuildDetails();
 
     int latestStoreBuildNumber = 0;
@@ -79,7 +80,6 @@ Future<void> deploy(
 
       print('Found store version: $storeMarketingVersion+$latestStoreBuildNumber');
 
-      // If the store's marketing version is higher, we must adopt it.
       if (isVersionHigher(storeMarketingVersion, marketingVersion)) {
         marketingVersion = storeMarketingVersion;
         print('Adopted marketing version from App Store: $marketingVersion');
@@ -88,21 +88,18 @@ Future<void> deploy(
       print('No existing builds found in App Store Connect.');
     }
 
-    // Always increment build number based on the latest from the store.
     buildNumber = latestStoreBuildNumber + 1;
     print('New build number will be $buildNumber.');
 
-    // If auto-increment is enabled, increment the patch version.
     if (autoIncrementMarketingVersion) {
       final marketingParts = marketingVersion.split('.').map(int.parse).toList();
       if (marketingParts.isNotEmpty) {
-        marketingParts[marketingParts.length - 1]++; // Increment the last part
+        marketingParts[marketingParts.length - 1]++;
         marketingVersion = marketingParts.join('.');
         print('Auto-incremented marketing version to: $marketingVersion');
       }
     }
 
-    // Update pubspec.yaml with the new final version string
     final newVersionString = '$marketingVersion+$buildNumber';
     print('Updating pubspec.yaml to version: $newVersionString');
     editor.update(['version'], newVersionString);
@@ -135,13 +132,15 @@ Future<void> deploy(
   final ipaPath = '$workingDirectory/build/ios/ipa/$ipaName';
   final whatsNew = config?['whatsNew']?.toString();
 
-  // [MODIFIED] Pass the final build number to the API client
   bool success = await appStoreApi.uploadAndSubmit(
     ipaPath: ipaPath,
     appVersion: marketingVersion,
     buildNumber: buildNumber.toString(),
     whatsNew: whatsNew,
-    submitForReview: submitToReview,
+    submitForReview: submitToReview, // Determines if App Store or Beta review
+    releaseAfterReview: releaseAfterReview, // For App Store: Release after review
+    releaseType: releaseType, // For App Store: MANUAL, AFTER_APPROVAL, SCHEDULED
+    scheduledReleaseDate: DateTime.parse(scheduledReleaseDate??DateTime.now().toIso8601String()), // For App Store: If releaseType is SCHEDULED
   );
 
   if (success) {

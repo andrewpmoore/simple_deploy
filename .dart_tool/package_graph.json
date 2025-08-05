@@ -5,9 +5,10 @@
   "packages": [
     {
       "name": "simple_deploy",
-      "version": "1.0.0-dev.13",
+      "version": "1.0.0",
       "dependencies": [
         "appstore_connect",
+        "args",
         "dart_jsonwebtoken",
         "flutter",
         "googleapis",
@@ -57,6 +58,11 @@
     {
       "name": "lints",
       "version": "4.0.0",
+      "dependencies": []
+    },
+    {
+      "name": "args",
+      "version": "2.7.0",
       "dependencies": []
     },
     {
@@ -467,11 +473,6 @@
         "meta",
         "web"
       ]
-    },
-    {
-      "name": "args",
-      "version": "2.7.0",
-      "dependencies": []
     },
     {
       "name": "string_scanner",

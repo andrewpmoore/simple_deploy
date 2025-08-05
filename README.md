@@ -1,9 +1,9 @@
-simple_deploy is a quick and easy way to deploy apps to the store's test systems
+simple_deploy is a quick and easy way to deploy apps to the store's test systems and for App Store review.
 
 
 ## Features
 
-Deploy to iOS Test Flight
+Deploy to iOS Test Flight and submit for App Store review
 Deploy to Android Play Store tracks of your choice
 Supports flavors
 
@@ -33,10 +33,14 @@ ios:
   privateKeyPath: "path/to/your/AuthKey_XXXXXXXXXX.p8"
   bundleId: "com.example.coolapp"
   
-  # Optional fields
-  whatsNew: "New features and improvements" # For "What's New" text in TestFlight
+  # Optional fields for TestFlight and App Store Submission
+  whatsNew: "New features and improvements" # "What's New" text
   flavor: "production"                   # Omit if not using flavors
   generatedFileName: "custom_name.ipa"   # Omit to use the default ipa name
+  # Optional fields for App Store Release Management (used when submitting for review)
+  releaseAfterReview: false               # true to automatically release after approval
+  releaseType: "MANUAL"                   # MANUAL, AFTER_APPROVAL, or SCHEDULED
+  scheduledReleaseDate: null              # ISO 8601 date string for SCHEDULED release
   ```
 
 And here's a version with all options set:
@@ -54,15 +58,22 @@ android:
   generatedFileName: "fancyproject.aab"       # supply a custom file name for the aab, or omit if using the default
 
 ios:
-  # App Store Connect API configuration (required for storeIncrement version strategy)
+  # App Store Connect API configuration
   issuerId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  # App Store Connect API Issuer ID
   keyId: "XXXXXXXXXX"  # App Store Connect API Key ID
   privateKeyPath: "path/to/AuthKey_XXXXXXXXXX.p8"  # Path to your private key file
   bundleId: "com.example.coolapp"  # Required for App Store submission
-  whatsNew: "New features and improvements"  # Optional, used for App Store submission
+  
+  # Optional fields for TestFlight and App Store Submission
+  whatsNew: "New features and improvements"
   flavor: "flavor"            # specify a flavor if required, or omit if not using flavors
   generatedFileName: "fancyproject.ipa"         # supply a custom file name for the ipa, or omit if using the default
   autoIncrementMarketingVersion: false # defaults to false, updates the first part of the 'version' in the pubspec.yaml, e.g. 1.0.15+39 (it would increment to 1.0.16)
+
+  # Optional fields for App Store Release Management (used with --submit-review)
+  releaseAfterReview: false               # Set to true to automatically release the app after approval.
+  releaseType: "MANUAL"                   # How the app should be released: MANUAL, AFTER_APPROVAL, SCHEDULED.
+  scheduledReleaseDate: null              # The date for a scheduled release (ISO 8601 format, e.g., "YYYY-MM-DDTHH:MM:SS.sssZ"). Used if releaseType is "SCHEDULED".
 ```
 
 #### Parameter details
@@ -75,7 +86,7 @@ ios:
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `none`             | Default. Uses the current value in the `pubspec`.                                                                                      |
 | `pubspecIncrement` | Retrieves the current build number from the `pubspec`, increments it by one, and uses the updated number.                              |
-| `storeIncrement`   | Gets the latest version code from the store (Play Store for Android), increments it by one, and updates the pubspec. For Android only. |
+| `storeIncrement`   | Gets the latest version code from the store (Play Store for Android or App Store Connect for iOS build number), increments it by one, and updates the pubspec. |
 
 | `trackName`  | Description                             |
 | ------------ | --------------------------------------- |
@@ -98,7 +109,14 @@ You can also supply the platform with
 
 - `dart run simple_deploy android`
 - `dart run simple_deploy ios`
-- `dart run simple_deploy ios --submit-review` # This will also submit to App Store review after TestFlight processing
+- `dart run simple_deploy ios --submit-review` # Builds, uploads to TestFlight, then submits the build for App Store review.
+
+**iOS App Store Release Options (used with `--submit-review`):**
+
+- `dart run simple_deploy ios --submit-review --ios-release-after-review` # Release automatically after Apple's approval.
+- `dart run simple_deploy ios --submit-review --ios-release-type="AFTER_APPROVAL"` # Same as above.
+- `dart run simple_deploy ios --submit-review --ios-release-type="MANUAL"` # Default, requires manual release from App Store Connect.
+- `dart run simple_deploy ios --submit-review --ios-release-type="SCHEDULED" --ios-scheduled-release-date="YYYY-MM-DDTHH:MM:SSZ"` # Schedule release for a specific date (UTC).
 
 If you are using flavors you can add them here, they will override what is set in the pubspec.yaml, for example
 
